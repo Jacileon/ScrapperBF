@@ -7,6 +7,8 @@
     {href:'markets.html', key:'markets', icon:'briefcase-business', label:'Marchés'},
     {href:'companies.html', key:'companies', icon:'building2', label:'Entreprises'},
     {href:'authorities.html', key:'authorities', icon:'landmark', label:'Autorités'},
+    {href:'experts.html', key:'experts', icon:'user-check', label:'Experts agréés'},
+    {href:'directory.html', key:'directory', icon:'handshake', label:'Annuaire PTF', tag:'ENT'},
     {sep:true},
     {href:'settings.html', key:'settings', icon:'settings', label:'Paramètres'},
     {href:'capability-profile.html', key:'profile', icon:'clipboard-check', label:'Profil de candidature'},
@@ -25,7 +27,7 @@
   var navHtml = NAV.map(function(n){
     if(n.sep) return '<div class="nav-separator"></div>';
     var active = n.key===page ? ' active':'';
-    return '<a class="nav-link'+active+'" href="'+n.href+'"'+(active?' aria-current="page"':'')+'><i data-icon="'+n.icon+'" data-size="18"></i><span>'+n.label+'</span></a>';
+    return '<a class="nav-link'+active+'" href="'+n.href+'"'+(active?' aria-current="page"':'')+'><i data-icon="'+n.icon+'" data-size="18"></i><span>'+n.label+'</span>'+(n.tag?'<em class="nav-tag">'+n.tag+'</em>':'')+'</a>';
   }).join('');
 
   var sidebar = el(

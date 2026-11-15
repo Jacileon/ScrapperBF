@@ -18,6 +18,15 @@
     <div class="hero-meta">Dernière mise à jour : 15 novembre 2026 · 11:20</div>
   </section>
 
+  <div class="scope-bar">
+    <span class="scope-label"><i data-icon="archive" data-size="14"></i> Période consultée</span>
+    <div class="scope-opts" id="scope">
+      <button class="scope-opt active" data-scope="recent" data-plan="free">20 marchés récents <em>Découverte</em></button>
+      <button class="scope-opt" data-scope="2026" data-plan="pro">Tous depuis janvier 2026 <em>PRO</em></button>
+      <button class="scope-opt" data-scope="archive" data-plan="ent">Archives depuis 2022 <em>Enterprise</em></button>
+    </div>
+  </div>
+
   <div class="mkts-kpi-grid">
     <div class="mkts-kpi"><span class="mkts-kpi-label">Total marchés</span><span class="mkts-kpi-value">19 914</span></div>
     <div class="mkts-kpi"><span class="mkts-kpi-label">Opportunités ouvertes</span><span class="mkts-kpi-value" style="color:var(--success)">95</span></div>
@@ -131,6 +140,17 @@
   document.getElementById('reset').addEventListener('click',function(){ state={deadline:'all',type:null,status:null,q:'',sector:'',region:'',sort:'urgent'}; document.getElementById('q').value='';document.getElementById('f-sector').value='';document.getElementById('f-region').value='';
     document.querySelectorAll('.quick-group button').forEach(function(x){x.classList.remove('active');}); document.querySelector('[data-group="deadline"] button').classList.add('active'); render(); });
   render();
+})();
+</script>
+<script>
+(function(){
+  var D=window.DATA, scope=document.getElementById('scope');
+  scope.addEventListener('click',function(e){
+    var b=e.target.closest('.scope-opt'); if(!b) return;
+    if(b.dataset.plan==='pro'){ window.toast('Marchés depuis janvier 2026 ('+D.archive.year2026.toLocaleString('fr-FR')+') — réservé au plan PRO'); return; }
+    if(b.dataset.plan==='ent'){ window.toast('Archives depuis 2022 ('+D.archive.full.toLocaleString('fr-FR')+') — réservé au plan Enterprise'); return; }
+    scope.querySelectorAll('.scope-opt').forEach(function(x){x.classList.remove('active');}); b.classList.add('active');
+  });
 })();
 </script>
 <script src="assets/shell.js"></script>

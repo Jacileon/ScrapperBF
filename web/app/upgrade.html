@@ -27,9 +27,9 @@
 <script>
 (function(){
   var plans=[
-    {id:'pro',name:'Pro',color:'#2563eb',featured:true,badge:'Recommandé',desc:'Pour accéder aux coordonnées des acheteurs et répondre à plus de marchés',month:15000,feats:['Recherche illimitée et tous les documents','Coordonnées des acheteurs (DCRP, DG…)','Marchés recommandés par IA','5 alertes Email personnalisées','Profil de candidature complet','Export PDF & Excel']},
-    {id:'business',name:'Business',color:'#7c3aed',desc:'Le copilote IA pour gagner plus de marchés publics',month:35000,feats:['Tout le plan Pro inclus','Recommandations IA illimitées','Analyse de vos chances de gagner','Score de compétitivité','Alertes WhatsApp & Email illimitées','Assistant IA complet']},
-    {id:'enterprise',name:'Enterprise',color:'#059669',desc:'Pour piloter les marchés publics avec toute votre équipe',month:75000,feats:['Tout le plan Business inclus','Utilisateurs illimités','Gestion des équipes et des rôles','Tableau de bord collaboratif','Reporting avancé','Accompagnement dédié']}
+    {id:'pro',name:'Pro',color:'#2563eb',featured:true,badge:'Recommandé',desc:'Pour accéder aux coordonnées des acheteurs et répondre à plus de marchés',month:15000,feats:['Tous les marchés publiés depuis janvier 2026','Recherche illimitée et tous les documents','Coordonnées des acheteurs (DCRP, DG…)','Marchés recommandés par IA','5 alertes Email personnalisées','Export PDF & Excel']},
+    {id:'business',name:'Business',color:'#7c3aed',desc:'Le copilote IA pour gagner plus de marchés publics',month:35000,feats:['Tout le plan Pro inclus','Recommandations IA illimitées','Analyse de vos chances de gagner','Mise en relation avec des experts agréés','Alertes WhatsApp & Email illimitées','Assistant IA complet']},
+    {id:'enterprise',name:'Enterprise',color:'#059669',desc:'Pour piloter les marchés publics avec toute votre équipe',month:75000,feats:['Tout le plan Business inclus','Archives complètes des marchés depuis 2022','Annuaire PTF (partenaires techniques & financiers)','Utilisateurs illimités et gestion des rôles','Reporting avancé et export','Accompagnement dédié']}
   ];
   var cycle='month';
   function price(p){ return cycle==='year'? (p.month*10).toLocaleString('fr-FR')+' FCFA / an' : p.month.toLocaleString('fr-FR')+' FCFA / mois'; }

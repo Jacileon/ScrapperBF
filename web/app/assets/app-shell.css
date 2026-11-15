@@ -408,3 +408,38 @@
   .user-info{display:none}
 }
 @media (max-width:640px){.dash-kpi-grid,.mkts-kpi-grid,.cl-kpi-grid,.aut-kpis,.mkt-kpis{grid-template-columns:1fr 1fr}.starter-markets-grid{grid-template-columns:1fr}.page-title{flex-direction:column;align-items:stretch}}
+
+/* ============================================================
+   Experts agréés + Annuaire PTF + périmètre d'accès (ajouts)
+   ============================================================ */
+.nav-tag{margin-left:auto;font-size:9px;font-weight:800;letter-spacing:.4px;padding:2px 6px;border-radius:5px;background:var(--accent-light);color:var(--accent)}
+.ent-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--primary-light);color:var(--primary)}
+.chip{display:inline-block;padding:2px 8px;margin:2px 2px 0 0;border-radius:6px;font-size:11px;font-weight:600;background:var(--bg-alt);color:var(--muted)}
+
+/* périmètre d'accès (marchés) */
+.scope-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px;padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.scope-label{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.scope-opts{display:flex;gap:8px;flex-wrap:wrap}
+.scope-opt{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);font-size:12.5px;font-weight:600;cursor:pointer}
+.scope-opt.active{border-color:var(--primary);background:var(--primary-light);color:var(--primary)}
+.scope-opt em{font-style:normal;font-size:10px;font-weight:800;padding:2px 6px;border-radius:5px;background:var(--bg-alt);color:var(--muted)}
+.scope-opt.active em{background:var(--primary);color:#fff}
+
+/* cartes experts */
+.exp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-bottom:8px}
+.exp-card{display:flex;flex-direction:column;gap:12px;padding:18px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-sm)}
+.exp-head{display:flex;gap:12px;align-items:flex-start}
+.exp-avatar{width:48px;height:48px;flex-shrink:0;border-radius:50%;background:var(--primary);color:#fff;font-size:17px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.exp-name{font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px}
+.agree-badge{display:inline-flex;color:var(--primary)}
+.exp-role{font-size:12.5px;color:var(--muted)}
+.exp-rating{font-size:12px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:6px}
+.exp-rating .stars{color:var(--accent);letter-spacing:1px}
+.exp-bio{margin:0;font-size:13px;color:var(--ink);line-height:1.5}
+.exp-tags{display:flex;flex-wrap:wrap}
+.exp-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:12px;color:var(--muted)}
+.exp-stats span{display:inline-flex;align-items:center;gap:5px;min-width:0}
+.exp-rate{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:var(--primary);background:var(--primary-light);padding:7px 10px;border-radius:8px}
+.exp-contact{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}
+.exp-contact .button{flex:1;min-width:0;font-size:12.5px;padding:8px 10px}
+@media (max-width:640px){.exp-grid{grid-template-columns:1fr}}
