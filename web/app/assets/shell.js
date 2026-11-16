@@ -8,7 +8,7 @@
     {href:'companies.html', key:'companies', icon:'building2', label:'Entreprises'},
     {href:'authorities.html', key:'authorities', icon:'landmark', label:'Autorités'},
     {href:'experts.html', key:'experts', icon:'user-check', label:'Experts agréés'},
-    {href:'directory.html', key:'directory', icon:'handshake', label:'Annuaire PTF', tag:'ENT'},
+    {href:'directory.html', key:'directory', icon:'archive', label:'Archives 2022', tag:'ENT'},
     {sep:true},
     {href:'settings.html', key:'settings', icon:'settings', label:'Paramètres'},
     {href:'capability-profile.html', key:'profile', icon:'clipboard-check', label:'Profil de candidature'},

@@ -443,3 +443,9 @@
 .exp-contact{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}
 .exp-contact .button{flex:1;min-width:0;font-size:12.5px;padding:8px 10px}
 @media (max-width:640px){.exp-grid{grid-template-columns:1fr}}
+
+/* extraction de page (archives documentaires) */
+.extract-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.extract-row label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--ink)}
+.extract-row input{border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--surface);color:var(--ink);width:160px}
+@media (max-width:560px){.extract-row label,.extract-row input{width:100%}.extract-row .button{width:100%;justify-content:center}}

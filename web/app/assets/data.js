@@ -63,25 +63,14 @@ window.DATA.experts=[
   {name:'Clarisse Ouattara',initials:'CO',role:'Ingénieure informatique',sectors:['Informatique'],region:'Bobo-Dioulasso',years:7,rating:4.7,dossiers:68,langues:'Français, Anglais',bio:'Réponses aux marchés de systèmes d\'information : architecture, planning, références projets.',rate:'À partir de 130 000 FCFA / dossier',phone:'+226 65 44 33 22'},
   {name:'Hamidou Barry',initials:'HB',role:'Agronome / Hydraulicien',sectors:['Agriculture','Hydraulique'],region:'Fada N\'Gourma',years:13,rating:4.8,dossiers:151,langues:'Français, Fulfuldé',bio:'Montage de dossiers forages, aménagements et intrants agricoles pour collectivités et ONG.',rate:'À partir de 115 000 FCFA / dossier',phone:'+226 70 12 34 56'}
 ];
-// --- Annuaire des Partenaires Techniques et Financiers (PTF) actifs depuis 2022 (données illustratives) ---
-window.DATA.ptf=[
-  {name:'Banque Mondiale',acr:'BM',type:'Multilatéral',country:'International',sectors:['Infrastructures','Santé','Éducation'],since:2022,engaged:'850 Md FCFA',projects:42,active:'2022–2026',contact:'ouagadougou@worldbank.org'},
-  {name:'Banque Africaine de Développement',acr:'BAD',type:'Multilatéral',country:'Afrique',sectors:['Énergie','Transport','Agriculture'],since:2022,engaged:'610 Md FCFA',projects:28,active:'2022–2026',contact:'bffo@afdb.org'},
-  {name:'Agence Française de Développement',acr:'AFD',type:'Bilatéral',country:'France',sectors:['Eau','Éducation','Climat'],since:2022,engaged:'320 Md FCFA',projects:19,active:'2022–2026',contact:'afdouagadougou@afd.fr'},
-  {name:'Union Européenne',acr:'UE',type:'Multilatéral',country:'Europe',sectors:['Gouvernance','Sécurité alimentaire','Infrastructures'],since:2022,engaged:'540 Md FCFA',projects:33,active:'2022–2026',contact:'delegation-burkina@eeas.europa.eu'},
-  {name:'Programme des Nations Unies pour le Développement',acr:'PNUD',type:'Agence ONU',country:'International',sectors:['Gouvernance','Résilience','Environnement'],since:2022,engaged:'145 Md FCFA',projects:24,active:'2022–2026',contact:'registry.bf@undp.org'},
-  {name:'UNICEF',acr:'UNICEF',type:'Agence ONU',country:'International',sectors:['Santé','Éducation','Eau & assainissement'],since:2022,engaged:'128 Md FCFA',projects:21,active:'2022–2026',contact:'ouagadougou@unicef.org'},
-  {name:'Banque Ouest Africaine de Développement',acr:'BOAD',type:'Multilatéral régional',country:'UEMOA',sectors:['Infrastructures','Énergie','Agriculture'],since:2022,engaged:'410 Md FCFA',projects:17,active:'2022–2026',contact:'boadsiege@boad.org'},
-  {name:'Banque Islamique de Développement',acr:'BID',type:'Multilatéral',country:'International',sectors:['Transport','Énergie','Santé'],since:2022,engaged:'275 Md FCFA',projects:12,active:'2022–2026',contact:'idbouagadougou@isdb.org'},
-  {name:'Coopération Allemande',acr:'GIZ',type:'Bilatéral',country:'Allemagne',sectors:['Agriculture','Décentralisation','Emploi'],since:2022,engaged:'190 Md FCFA',projects:26,active:'2022–2026',contact:'giz-burkina-faso@giz.de'},
-  {name:'Fonds International de Développement Agricole',acr:'FIDA',type:'Multilatéral',country:'International',sectors:['Agriculture','Développement rural'],since:2022,engaged:'96 Md FCFA',projects:9,active:'2022–2026',contact:'ico-bf@ifad.org'},
-  {name:'Coopération Suisse',acr:'DDC',type:'Bilatéral',country:'Suisse',sectors:['Éducation','Gouvernance locale','Eau'],since:2022,engaged:'84 Md FCFA',projects:15,active:'2022–2026',contact:'ouagadougou@eda.admin.ch'},
-  {name:'Banque Arabe pour le Développement en Afrique',acr:'BADEA',type:'Multilatéral',country:'Afrique / Monde arabe',sectors:['Infrastructures','Énergie'],since:2022,engaged:'132 Md FCFA',projects:8,active:'2022–2026',contact:'badea@badea.org'},
-  {name:'USAID',acr:'USAID',type:'Bilatéral',country:'États-Unis',sectors:['Santé','Sécurité alimentaire','Éducation'],since:2022,engaged:'210 Md FCFA',projects:18,active:'2022–2025',contact:'infoouaga@usaid.gov'},
-  {name:'Fonds Saoudien de Développement',acr:'FSD',type:'Bilatéral',country:'Arabie Saoudite',sectors:['Infrastructures','Hydraulique'],since:2022,engaged:'118 Md FCFA',projects:7,active:'2022–2026',contact:'info@sfd.gov.sa'}
-];
-// --- Périmètre d'accès par plan (archives) ---
-window.DATA.archive={ recent:20, year2026:3240, full:19914, totalEngaged:'4 128 Md FCFA', partners:14, projects:299 };
+// --- Périmètre d'accès par plan + archive documentaire DGCMEF ---
+// Base des bulletins « Quotidien » (PDF d'avis d'appels d'offres) publiés depuis 2022.
+// La liste des bulletins est générée dans directory.html à partir de cet ancrage.
+window.DATA.archive={
+  recent:20, year2026:3240, full:19914,
+  bulletins:1182, firstYear:2022, lastYear:2026,
+  anchorDate:'2026-11-13', anchorNum:4505, totalPages:38460
+};
 window.fmtAmount=function(n){ if(n==null) return '—'; if(n>=1e9) return (n/1e9).toLocaleString('fr-FR',{maximumFractionDigits:1})+' Md FCFA'; if(n>=1e6) return (n/1e6).toLocaleString('fr-FR',{maximumFractionDigits:1})+' M FCFA'; return n.toLocaleString('fr-FR')+' FCFA'; };
 window.fmtDate=function(iso){ var p=iso.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; };
 window.daysLeft=function(iso){ var t=new Date(iso+'T23:59:59'); return Math.ceil((t-Date.now())/86400000); };
