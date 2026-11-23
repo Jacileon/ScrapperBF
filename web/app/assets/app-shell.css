@@ -449,3 +449,114 @@
 .extract-row label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--ink)}
 .extract-row input{border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--surface);color:var(--ink);width:160px}
 @media (max-width:560px){.extract-row label,.extract-row input{width:100%}.extract-row .button{width:100%;justify-content:center}}
+
+/* ============================================================
+   Refonte conviviale — composants partagés (2026-11)
+   Accueil chaleureux, stats légères, secteurs, cartes marché.
+   ============================================================ */
+
+/* Bandeau d'accueil (hero) */
+.welcome{position:relative;overflow:hidden;border-radius:20px;padding:32px 34px;margin-bottom:24px;color:#fff;background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);box-shadow:0 20px 44px -24px var(--primary)}
+.welcome:before{content:"";position:absolute;right:-70px;top:-70px;width:280px;height:280px;border-radius:50%;background:#ffffff14}
+.welcome:after{content:"";position:absolute;right:70px;bottom:-110px;width:220px;height:220px;border-radius:50%;background:#ffffff0d}
+.welcome>*{position:relative;z-index:1}
+.wl-eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#ffffffd0;margin-bottom:12px}
+.welcome h1{margin:0 0 10px;font-size:29px;font-weight:800;line-height:1.18;max-width:640px;letter-spacing:-.4px}
+.welcome .wl-sub{margin:0 0 20px;font-size:15px;color:#ffffffe8;max-width:580px;line-height:1.55}
+.welcome-actions{display:flex;gap:10px;flex-wrap:wrap}
+.welcome-actions .button{background:#fff;color:var(--primary-dark);font-weight:700}
+.welcome-actions .button:hover{background:#eafaf0}
+.welcome-actions .button.ghost{background:#ffffff1c;color:#fff;border:1px solid #ffffff40}
+.welcome-actions .button.ghost:hover{background:#ffffff33}
+.welcome-fresh{margin-top:16px;display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:#ffffffcf}
+.welcome-fresh .pulse{width:9px;height:9px;border-radius:50%;background:#86efac;animation:wl-pulse 2.2s infinite}
+@keyframes wl-pulse{0%{box-shadow:0 0 0 0 #86efac99}70%{box-shadow:0 0 0 9px #86efac00}100%{box-shadow:0 0 0 0 #86efac00}}
+
+/* Bande de 3 stats légères */
+.stat-band{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px}
+.stat-tile{display:flex;align-items:center;gap:15px;padding:18px 20px;background:var(--surface);border:1px solid var(--line);border-radius:15px;box-shadow:var(--shadow-sm)}
+.stat-tile .st-ico{width:48px;height:48px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--primary-light);color:var(--primary)}
+.stat-tile.amber .st-ico{background:var(--accent-light);color:var(--accent)}
+.stat-tile.blue .st-ico{background:var(--blue-light);color:var(--blue)}
+.stat-tile .st-val{font-size:25px;font-weight:800;line-height:1.05;letter-spacing:-.5px}
+.stat-tile .st-lbl{font-size:12.5px;color:var(--muted);margin-top:3px}
+@media (max-width:640px){.stat-band{grid-template-columns:1fr}}
+
+/* En-tête de section */
+.section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:28px 0 14px}
+.section-head h2{margin:0;font-size:19px;font-weight:800;display:flex;align-items:center;gap:9px}
+.section-head h2 .ico{color:var(--primary)}
+.section-head .sh-sub{margin:3px 0 0;font-size:13px;color:var(--muted);font-weight:400}
+.sh-link{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:var(--primary);white-space:nowrap}
+.sh-link:hover{gap:8px}
+
+/* Grille de secteurs */
+.sector-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:12px}
+.sector-tile{--sec:var(--primary);display:flex;align-items:center;gap:13px;padding:15px 16px;border:1px solid var(--line);border-radius:15px;background:var(--surface);color:var(--ink);transition:border-color .15s,transform .15s,box-shadow .15s}
+.sector-tile:hover{border-color:var(--sec);transform:translateY(-2px);box-shadow:0 12px 26px -18px var(--sec)}
+.sector-tile .sec-ico{width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:color-mix(in srgb,var(--sec) 15%,transparent);color:var(--sec)}
+.sector-tile .sec-body{min-width:0;flex:1}
+.sector-tile .sec-name{font-size:13.5px;font-weight:700;line-height:1.25;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sector-tile .sec-count{font-size:12px;color:var(--muted)}
+.sector-tile .sec-count b{color:var(--sec);font-weight:800}
+
+/* Puce de secteur (sur les cartes) */
+.sector-chip{--sec:var(--primary);display:inline-flex;align-items:center;gap:5px;max-width:170px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:color-mix(in srgb,var(--sec) 13%,transparent);color:var(--sec);border:1px solid color-mix(in srgb,var(--sec) 30%,transparent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sector-chip .ico{flex-shrink:0}
+
+/* Cartes marché */
+.mk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+.mk-card{display:flex;flex-direction:column;gap:10px;padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm);transition:border-color .15s,transform .15s,box-shadow .15s}
+.mk-card:hover{border-color:var(--primary);transform:translateY(-3px);box-shadow:0 16px 32px -22px var(--primary)}
+.mk-card-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mk-type{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--bg-alt);color:var(--muted)}
+.mk-type.type-tender{background:var(--blue-light);color:var(--blue)}
+.mk-type.type-price{background:var(--accent-light);color:#92650f}
+.mk-type.type-result{background:var(--primary-light);color:var(--primary)}
+:root[data-theme="dark"] .mk-type.type-price{color:var(--accent)}
+.mk-card-title{font-size:15px;font-weight:700;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;transition:color .15s}
+.mk-card:hover .mk-card-title{color:var(--primary)}
+.mk-card-auth{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);line-height:1.3}
+.mk-card-auth .ico{flex-shrink:0}
+.mk-card-auth span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mk-card-bottom{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:auto;padding-top:12px;border-top:1px solid var(--line)}
+.mk-card-amount{font-size:14px;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+.mk-card-amount small{display:block;font-size:10px;font-weight:600;color:var(--muted);text-align:right;margin-top:1px}
+
+/* Pastille d'échéance */
+.deadline-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:5px 10px;border-radius:9px;white-space:nowrap}
+.deadline-pill em{font-style:normal;font-weight:600;opacity:.72}
+.deadline-pill.open{background:var(--primary-light);color:var(--primary)}
+.deadline-pill.soon{background:var(--accent-light);color:#92650f}
+:root[data-theme="dark"] .deadline-pill.soon{color:var(--accent)}
+.deadline-pill.urgent{background:var(--danger-light);color:var(--danger)}
+.deadline-pill.closed{background:var(--bg-alt);color:var(--muted)}
+.deadline-pill.result{background:var(--blue-light);color:var(--blue)}
+.deadline-pill.neutral{background:var(--bg-alt);color:var(--muted)}
+
+/* Barre de filtres compacte */
+.filterbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.filterbar .search-box{flex:1;min-width:240px;border-radius:11px}
+.filterbar select{border:1px solid var(--line);border-radius:11px;padding:11px 12px;background:var(--surface);color:var(--ink);font-size:13.5px;font-weight:600;cursor:pointer}
+.chip-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px;align-items:center}
+.chip-row .chip-label{font-size:12px;font-weight:700;color:var(--muted);margin-right:2px}
+.chip-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font-size:12.5px;font-weight:600;cursor:pointer;transition:all .14s}
+.chip-btn:hover{color:var(--ink);border-color:var(--muted)}
+.chip-btn.active{background:var(--primary);border-color:var(--primary);color:#fff}
+.chip-btn .chip-ct{font-size:11px;opacity:.75;font-weight:700}
+
+/* En-tête de résultats + état vide */
+.results-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.results-bar .rb-count{font-size:14px;font-weight:700}
+.results-bar .rb-count b{color:var(--primary)}
+.results-bar .rb-tools{display:flex;align-items:center;gap:10px}
+.empty-soft{grid-column:1/-1;text-align:center;padding:50px 20px;color:var(--muted)}
+.empty-soft .es-ico{width:62px;height:62px;border-radius:50%;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;background:var(--bg-alt);color:var(--muted)}
+.empty-soft strong{display:block;font-size:15px;color:var(--ink);margin-bottom:4px}
+
+@media (max-width:640px){
+  .welcome{padding:24px 20px;border-radius:16px}
+  .welcome h1{font-size:23px}
+  .welcome .wl-sub{font-size:14px}
+  .mk-grid,.sector-grid{grid-template-columns:1fr}
+}

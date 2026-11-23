@@ -11,146 +11,158 @@
 <body>
 <div id="app" data-page="markets"></div>
 <main class="main" id="main-content">
-  <section class="markets-hero">
-    <p class="eyebrow">Veille marchés publics</p>
-    <h1>Marchés</h1>
-    <p class="hero-copy">Consultez les derniers marchés publiés et priorisez ceux qui clôturent bientôt.</p>
-    <div class="hero-meta">Dernière mise à jour : 15 novembre 2026 · 11:20</div>
+  <section class="markets-hero" style="margin-bottom:16px">
+    <p class="eyebrow">Toutes les opportunités</p>
+    <h1 id="mk-h1">Marchés publics</h1>
+    <p class="hero-copy" id="mk-sub">Parcourez les appels d'offres et demandes de prix publiés au Burkina Faso.</p>
   </section>
 
-  <div class="scope-bar">
-    <span class="scope-label"><i data-icon="archive" data-size="14"></i> Période consultée</span>
-    <div class="scope-opts" id="scope">
-      <button class="scope-opt active" data-scope="recent" data-plan="free">20 marchés récents <em>Découverte</em></button>
-      <button class="scope-opt" data-scope="2026" data-plan="pro">Tous depuis janvier 2026 <em>PRO</em></button>
-      <button class="scope-opt" data-scope="archive" data-plan="ent">Archives depuis 2022 <em>Enterprise</em></button>
+  <div class="filterbar">
+    <div class="search-box"><i data-icon="search" data-size="18"></i><input id="q" placeholder="Rechercher un objet, une autorité, une référence…"></div>
+    <select id="f-sector"><option value="">Tous les secteurs</option></select>
+    <select id="f-type">
+      <option value="">Tous les types</option>
+      <option value="AO">Appel d'offres</option>
+      <option value="DP">Demande de prix</option>
+      <option value="MI">Manifestation d'intérêt</option>
+    </select>
+    <select id="sort">
+      <option value="urgent">Échéance la plus proche</option>
+      <option value="recent">Plus récents</option>
+      <option value="amount">Montant le plus élevé</option>
+    </select>
+  </div>
+
+  <div class="chip-row" id="deadline-chips">
+    <span class="chip-label">Échéance</span>
+    <button class="chip-btn active" data-v="all">Toutes</button>
+    <button class="chip-btn" data-v="7"><i data-icon="clock" data-size="13"></i> Ferme bientôt</button>
+    <button class="chip-btn" data-v="30">Ce mois-ci</button>
+    <button class="chip-btn" data-v="open">Encore ouvertes</button>
+    <button class="chip-btn" data-v="closed">Clôturées</button>
+  </div>
+
+  <div class="results-bar">
+    <div class="rb-count" id="count">—</div>
+    <div class="rb-tools">
+      <select id="page-size"><option value="60">60 par page</option><option value="120">120 par page</option><option value="all">Tout afficher</option></select>
+      <button class="button secondary-button" id="btn-export-csv" style="padding:9px 13px;font-size:13px"><i data-icon="download" data-size="15"></i> CSV</button>
     </div>
   </div>
 
-  <div class="mkts-kpi-grid">
-    <div class="mkts-kpi"><span class="mkts-kpi-label">Total marchés</span><span class="mkts-kpi-value">19 914</span></div>
-    <div class="mkts-kpi"><span class="mkts-kpi-label">Opportunités ouvertes</span><span class="mkts-kpi-value" style="color:var(--success)">95</span></div>
-    <div class="mkts-kpi"><span class="mkts-kpi-label">Marchés attribués</span><span class="mkts-kpi-value">17 668</span></div>
-    <div class="mkts-kpi"><span class="mkts-kpi-label">Nouveaux cette semaine</span><span class="mkts-kpi-value" style="color:var(--blue)">195</span></div>
-    <div class="mkts-kpi"><span class="mkts-kpi-label">Volume estimé total</span><span class="mkts-kpi-value" style="font-size:18px">1 466,2 Md FCFA</span></div>
-    <div class="mkts-kpi"><span class="mkts-kpi-label">Volume attribué total</span><span class="mkts-kpi-value" style="font-size:18px">2 600,1 Md FCFA</span></div>
-  </div>
+  <section class="mk-grid" id="grid"></section>
+  <div id="more-wrap" style="text-align:center;margin-top:18px" hidden><button class="button secondary-button" id="btn-more">Afficher plus de marchés</button></div>
 
-  <section class="filters-card">
-    <div class="search-row">
-      <div class="search-box"><i data-icon="search" data-size="18"></i><input id="q" placeholder="Objet, référence, autorité, entreprise..."><button class="voice-search" title="Recherche vocale" data-toast="Recherche vocale (démo)"><i data-icon="mic" data-size="18"></i></button></div>
-      <button class="button secondary-button" data-toast="Filtres avancés (démo)"><i data-icon="filter" data-size="15"></i> Filtres avancés</button>
-      <button class="button" id="do-search"><i data-icon="search" data-size="15"></i> Rechercher</button>
-      <button class="button secondary-button" id="reset"><i data-icon="rotate-ccw" data-size="15"></i> Réinitialiser</button>
-    </div>
-    <div class="quick-groups">
-      <div class="quick-group"><span>Échéance</span><div data-group="deadline">
-        <button class="active" data-v="all">Toutes les échéances</button><button data-v="today">Clôture aujourd'hui</button><button data-v="7">Dans les 7 prochains jours</button><button data-v="30">Dans les 30 prochains jours</button><button data-v="closed">Déjà clôturés</button></div></div>
-      <div class="quick-group"><span>Type</span><div data-group="type">
-        <button data-v="AO">Appel d'offres</button><button data-v="DP">Demande de prix</button><button data-v="RP">Résultat provisoire</button></div></div>
-      <div class="quick-group"><span>Statut</span><div data-group="status">
-        <button data-v="open">Ouvert</button><button data-v="result">Résultat</button></div></div>
-    </div>
-    <div class="essential-grid">
-      <label>Secteur<input id="f-sector" placeholder="Tous les secteurs"></label>
-      <label>Région<input id="f-region" placeholder="Toutes les régions"></label>
-      <label>Trier les résultats<select id="sort"><option value="urgent">Échéances les plus urgentes</option><option value="amount_desc">Montants les plus élevés</option><option value="pub_desc">Publications les plus récentes</option></select></label>
-    </div>
-  </section>
-
-  <section class="markets-list-card">
-    <div class="list-header">
-      <div><h2>Liste des marchés</h2><p id="count">—</p></div>
-      <div class="list-tools"><span>Afficher</span><select><option>25</option><option>50</option><option>100</option></select><button class="button secondary-button" data-toast="Export CSV (démo)"><i data-icon="download" data-size="15"></i> Exporter</button></div>
-    </div>
-    <div class="upsell-banner">
-      <div><div class="ub-title">🔒 Limite du plan Découverte atteinte</div><div class="ub-text">Vous avez consulté les 20 premiers marchés. Passez au plan <strong>PRO</strong> pour accéder à l'intégralité des 19 914 marchés disponibles.</div></div>
-      <a href="upgrade.html" class="button">Passer à PRO — 15 000 FCFA/mois</a>
-    </div>
-    <div class="desktop-table">
-      <table class="decision-table">
-        <thead><tr><th>Objet du marché</th><th>Date limite / résultat</th><th>Temps restant</th><th>Montant</th><th>Type</th><th>Actions</th></tr></thead>
-        <tbody id="rows"></tbody>
-      </table>
-    </div>
-    <div class="mobile-cards" id="cards"></div>
-  </section>
-
-  <div class="app-footer"><span>Les données présentées sont actualisées quotidiennement à 00h00.</span><span>© 2026 Veille BF · Tous droits réservés</span></div>
+  <div class="app-footer"><span>Données publiques issues des bulletins officiels de la DGCMEF.</span><span>© 2026 Veille BF</span></div>
 </main>
 
 <script src="assets/data.js"></script>
 <script src="assets/icons.js"></script>
+<script src="assets/ui.js"></script>
 <script>
 (function(){
-  var D=window.DATA, state={deadline:'all',type:null,status:null,q:'',sector:'',region:'',sort:'urgent'};
-  function typeCls(t){ return t==='AO'?'type-tender':t==='RP'?'type-result':'type-price'; }
-  function deadlineBadge(m){
-    if(m.status==='result') return '<div class="deadline-badge result"><i data-icon="calendar-days" data-size="15"></i><span><strong>Résultat publié</strong><em>'+window.fmtDate(m.deadline)+'</em></span></div>';
-    var d=window.daysLeft(m.deadline);
-    return '<div class="deadline-badge ok"><i data-icon="clock" data-size="15"></i><span><strong>Clôture dans '+d+' jour'+(d>1?'s':'')+'</strong><em>'+window.fmtDate(m.deadline)+'</em></span></div>';
-  }
-  function remaining(m){ if(m.status==='result') return 'Résultat'; var d=window.daysLeft(m.deadline); return 'Dans '+d+' jours'; }
+  var D = window.DATA, LIMIT = 60;
+  var state = { q:'', type:'', sector:'', deadline:'all', sort:'urgent' };
+
+  // Pré-remplissage depuis l'URL
+  function qp(k){ var m=location.search.match(new RegExp('[?&]'+k+'=([^&]+)')); return m?decodeURIComponent(m[1].replace(/\+/g,' ')):''; }
+  state.q = qp('q'); state.sector = qp('sector'); state.type = qp('type');
+  if (qp('deadline')) state.deadline = qp('deadline');
+
+  // Options de secteurs depuis les données
+  var selSec = document.getElementById('f-sector');
+  (D.sectors||[]).forEach(function(s){
+    var o=document.createElement('option'); o.value=s[0]; o.textContent=s[0]+' ('+s[1]+')'; selSec.appendChild(o);
+  });
+
+  // Appliquer l'état aux contrôles
+  document.getElementById('q').value = state.q;
+  selSec.value = state.sector;
+  document.getElementById('f-type').value = state.type;
+  document.querySelectorAll('#deadline-chips .chip-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.v===state.deadline); });
+
+  function bnum(m){ var x=((m.bulletin||'')+' '+(m.id||'')).match(/N[°o]?\s*(\d{3,5})/i); return x?parseInt(x[1],10):0; }
 
   function filtered(){
-    var list=D.markets.filter(function(m){
+    var list = D.markets.filter(function(m){
       if(state.type && m.type!==state.type) return false;
-      if(state.status && m.status!==state.status) return false;
-      if(state.q){ var q=state.q.toLowerCase(); if((m.title+m.authority+m.ref).toLowerCase().indexOf(q)<0) return false; }
-      if(state.sector && m.sector.toLowerCase().indexOf(state.sector.toLowerCase())<0) return false;
-      if(state.region && m.region.toLowerCase().indexOf(state.region.toLowerCase())<0) return false;
-      if(state.deadline==='closed' && m.status!=='result') return false;
-      if(state.deadline==='7' && (m.status==='result'||window.daysLeft(m.deadline)>7)) return false;
-      if(state.deadline==='30' && (m.status==='result'||window.daysLeft(m.deadline)>30)) return false;
-      if(state.deadline==='today' && (m.status==='result'||window.daysLeft(m.deadline)!==0)) return false;
+      if(state.sector && m.sector!==state.sector) return false;
+      if(state.q){ var q=state.q.toLowerCase(); if((''+(m.title||'')+(m.authority||'')+(m.ref||'')+(m.bulletin||'')).toLowerCase().indexOf(q)<0) return false; }
+      if(state.deadline!=='all'){
+        if(state.deadline==='closed'){ if(m.status!=='result' && window.daysLeft(m.deadline)>=0) return false; }
+        else if(state.deadline==='open'){ if(m.status==='result' || window.daysLeft(m.deadline)<0) return false; }
+        else if(state.deadline==='7'){ if(m.status==='result' || window.daysLeft(m.deadline)<0 || window.daysLeft(m.deadline)>7) return false; }
+        else if(state.deadline==='30'){ if(m.status==='result' || window.daysLeft(m.deadline)<0 || window.daysLeft(m.deadline)>30) return false; }
+      }
       return true;
     });
-    if(state.sort==='amount_desc') list.sort(function(a,b){return (b.amount||0)-(a.amount||0);});
-    else if(state.sort==='pub_desc') list.sort(function(a,b){return b.pub<a.pub?-1:1;});
-    else list.sort(function(a,b){ var da=a.status==='result'?9999:window.daysLeft(a.deadline), db=b.status==='result'?9999:window.daysLeft(b.deadline); return da-db; });
+    if(state.sort==='amount') list.sort(function(a,b){ return (b.amount||0)-(a.amount||0); });
+    else if(state.sort==='recent') list.sort(function(a,b){ return bnum(b)-bnum(a); });
+    else list.sort(function(a,b){
+      var da=a.status==='result'?99999:window.daysLeft(a.deadline), db=b.status==='result'?99999:window.daysLeft(b.deadline);
+      da = da<0?9000-da:da; db = db<0?9000-db:db; return da-db;
+    });
     return list;
   }
+
   function render(){
-    var list=filtered();
-    document.getElementById('count').textContent=list.length.toLocaleString('fr-FR')+' marchés publiés';
-    document.getElementById('rows').innerHTML=list.map(function(m){
-      return '<tr><td><div class="object-wrap"><div class="doc-icon"><i data-icon="file-text" data-size="16"></i></div><div><a class="market-title" href="market.html?id='+m.id+'">'+m.title+'</a><div class="authority-line">'+m.authority+'</div><div class="reference-line">Réf : '+m.ref+'</div></div></div></td>'
-        +'<td>'+deadlineBadge(m)+'</td><td class="muted" style="font-size:12px">'+remaining(m)+'</td><td class="amount-cell">'+window.fmtAmount(m.amount)+'</td>'
-        +'<td><span class="type-badge '+typeCls(m.type)+'"><span>'+m.type+'</span>'+m.typeLabel+'</span></td>'
-        +'<td><div class="row-actions"><a href="market.html?id='+m.id+'" title="Voir"><i data-icon="eye" data-size="15"></i></a><button data-toast="Ajouté aux favoris" title="Favori"><i data-icon="bookmark" data-size="15"></i></button><button data-toast="Plus d\'actions" title="Plus"><i data-icon="ellipsis-vertical" data-size="15"></i></button></div></td></tr>';
-    }).join('');
-    document.getElementById('cards').innerHTML=list.map(function(m){
-      return '<article class="mobile-card"><div class="mobile-card-top"><span class="type-badge '+typeCls(m.type)+'"><span>'+m.type+'</span>'+m.typeLabel+'</span><div class="row-actions"><a href="market.html?id='+m.id+'"><i data-icon="eye" data-size="15"></i></a><button data-toast="Favori"><i data-icon="bookmark" data-size="15"></i></button></div></div><a class="mobile-title" href="market.html?id='+m.id+'">'+m.title+'</a><p>'+m.authority+'</p><div class="mobile-meta">'+deadlineBadge(m)+'<strong class="amount-cell">'+window.fmtAmount(m.amount)+'</strong></div><span class="mobile-ref">Réf : '+m.ref+'</span></article>';
-    }).join('');
+    var list = filtered();
+    var show = LIMIT==='all' ? list : list.slice(0, LIMIT);
+    var c = document.getElementById('count');
+    c.innerHTML = '<b>'+list.length.toLocaleString('fr-FR')+'</b> marché'+(list.length>1?'s':'')+(state.sector?' · '+state.sector:'');
+    if(!list.length){
+      document.getElementById('grid').innerHTML = '<div class="empty-soft"><div class="es-ico"><i data-icon="search" data-size="26"></i></div><strong>Aucun marché ne correspond</strong>Élargissez votre recherche ou réinitialisez les filtres.</div>';
+      document.getElementById('more-wrap').hidden = true;
+    } else {
+      document.getElementById('grid').innerHTML = show.map(window.marketCard).join('');
+      document.getElementById('more-wrap').hidden = (LIMIT==='all' || show.length>=list.length);
+    }
     window.renderIcons(document.getElementById('main-content'));
   }
 
-  document.querySelectorAll('.quick-group>div').forEach(function(g){
-    g.addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b) return;
-      var grp=g.dataset.group, v=b.dataset.v;
-      g.querySelectorAll('button').forEach(function(x){x.classList.remove('active');});
-      if(grp==='deadline'){ state.deadline=v; b.classList.add('active'); }
-      else { if(state[grp]===v){ state[grp]=null; } else { state[grp]=v; b.classList.add('active'); } }
-      render();
+  // Titre contextuel si filtre secteur actif
+  if(state.sector){
+    document.getElementById('mk-h1').textContent = state.sector;
+    document.getElementById('mk-sub').textContent = 'Les marchés publics du secteur « '+state.sector+' ».';
+  }
+
+  document.getElementById('q').addEventListener('input', function(){ state.q=this.value; LIMIT=60; render(); });
+  selSec.addEventListener('change', function(){ state.sector=this.value; LIMIT=60; render(); });
+  document.getElementById('f-type').addEventListener('change', function(){ state.type=this.value; LIMIT=60; render(); });
+  document.getElementById('sort').addEventListener('change', function(){ state.sort=this.value; render(); });
+  document.getElementById('deadline-chips').addEventListener('click', function(e){
+    var b=e.target.closest('.chip-btn'); if(!b) return;
+    this.querySelectorAll('.chip-btn').forEach(function(x){ x.classList.remove('active'); });
+    b.classList.add('active'); state.deadline=b.dataset.v; LIMIT=60; render();
+  });
+  document.getElementById('page-size').addEventListener('change', function(){ LIMIT = this.value==='all'?'all':parseInt(this.value,10); render(); });
+  document.getElementById('btn-more').addEventListener('click', function(){ LIMIT += 60; render(); });
+
+  // Export CSV des résultats filtrés
+  document.getElementById('btn-export-csv').addEventListener('click', function(){
+    var list = filtered();
+    var headers = ["Objet","Autorite","Reference","Type","Secteur","Budget_FCFA","Date_limite","Lots","Bulletin"];
+    var rows = [headers.join(";")];
+    list.forEach(function(m){
+      rows.push([
+        '"'+(m.title||'').replace(/"/g,'""')+'"',
+        '"'+(m.authority||'').replace(/"/g,'""')+'"',
+        '"'+(m.ref||'').replace(/"/g,'""')+'"',
+        '"'+(m.typeLabel||'')+'"',
+        '"'+(m.sector||'')+'"',
+        m.amount||'',
+        '"'+(m.deadline_raw||m.deadline||'')+'"',
+        (m.detail_lots&&m.detail_lots.length)||m.lots||1,
+        '"'+(m.bulletin||'')+'"'
+      ].join(";"));
     });
+    var blob = new Blob(["﻿"+rows.join("\n")], {type:"text/csv;charset=utf-8;"});
+    var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "marches_veillebf.csv";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    window.toast("Export CSV généré ("+list.length+" marchés)");
   });
-  document.getElementById('do-search').addEventListener('click',function(){ state.q=document.getElementById('q').value; state.sector=document.getElementById('f-sector').value; state.region=document.getElementById('f-region').value; render(); });
-  document.getElementById('q').addEventListener('keydown',function(e){ if(e.key==='Enter'){ state.q=this.value; render(); } });
-  document.getElementById('sort').addEventListener('change',function(){ state.sort=this.value; render(); });
-  document.getElementById('reset').addEventListener('click',function(){ state={deadline:'all',type:null,status:null,q:'',sector:'',region:'',sort:'urgent'}; document.getElementById('q').value='';document.getElementById('f-sector').value='';document.getElementById('f-region').value='';
-    document.querySelectorAll('.quick-group button').forEach(function(x){x.classList.remove('active');}); document.querySelector('[data-group="deadline"] button').classList.add('active'); render(); });
+
   render();
-})();
-</script>
-<script>
-(function(){
-  var D=window.DATA, scope=document.getElementById('scope');
-  scope.addEventListener('click',function(e){
-    var b=e.target.closest('.scope-opt'); if(!b) return;
-    if(b.dataset.plan==='pro'){ window.toast('Marchés depuis janvier 2026 ('+D.archive.year2026.toLocaleString('fr-FR')+') — réservé au plan PRO'); return; }
-    if(b.dataset.plan==='ent'){ window.toast('Archives depuis 2022 ('+D.archive.full.toLocaleString('fr-FR')+') — réservé au plan Enterprise'); return; }
-    scope.querySelectorAll('.scope-opt').forEach(function(x){x.classList.remove('active');}); b.classList.add('active');
-  });
 })();
 </script>
 <script src="assets/shell.js"></script>

@@ -7,48 +7,812 @@
 <link rel="icon" href="assets/logo.svg">
 <link rel="stylesheet" href="assets/app.css">
 <link rel="stylesheet" href="assets/app-shell.css">
+<style>
+/* Styles dédiés pour la vue détaillée de l'autorité */
+.auth-hero {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.auth-hero-main {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  flex: 1;
+  min-width: 280px;
+}
+.auth-avatar-large {
+  width: 58px;
+  height: 58px;
+  border-radius: 14px;
+  background: var(--primary-light);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.auth-hero-title {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 0 0 8px;
+  line-height: 1.3;
+  color: var(--ink);
+}
+.auth-badges-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.auth-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+.auth-badge-pill.primary {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: transparent;
+}
+.auth-badge-pill.tutelle {
+  background: var(--blue-light);
+  color: var(--blue);
+  border-color: transparent;
+}
+.auth-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+@media (max-width: 900px) {
+  .auth-detail-grid { grid-template-columns: 1fr; }
+}
+.dist-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.dist-item:last-child { border-bottom: none; }
+.dist-bar-wrap {
+  width: 100px;
+  height: 6px;
+  background: var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 0 10px;
+}
+.dist-bar {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 3px;
+}
+.contact-bubble {
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+.clickable-row {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.clickable-row:hover {
+  background: var(--surface-2);
+}
+.btn-view-auth {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--primary-light);
+  color: var(--primary);
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-view-auth:hover {
+  background: var(--primary);
+  color: #fff;
+}
+.breadcrumb-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+.breadcrumb-nav a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+.breadcrumb-nav a:hover {
+  text-decoration: underline;
+}
+</style>
 </head>
 <body>
 <div id="app" data-page="authorities"></div>
 <main class="main" id="main-content">
-  <div style="margin-bottom:22px"><h1 style="font-size:24px;font-weight:800;margin:0 0 4px">Autorités contractantes</h1><p class="muted" style="margin:0">Analysez les acheteurs publics, leurs marchés et leurs habitudes d'achat.</p></div>
-  <div class="aut-kpis">
-    <div class="aut-kpi"><div class="aut-kpi-ico" style="background:var(--primary-light);color:var(--primary)"><i data-icon="landmark" data-size="18"></i></div><div class="aut-kpi-val">11</div><div class="aut-kpi-lbl">Autorités référencées</div></div>
-    <div class="aut-kpi"><div class="aut-kpi-ico" style="background:var(--blue-light);color:var(--blue)"><i data-icon="chart-no-axes-column" data-size="18"></i></div><div class="aut-kpi-val">20</div><div class="aut-kpi-lbl">Marchés publiés</div></div>
-    <div class="aut-kpi"><div class="aut-kpi-ico" style="background:var(--accent-light);color:var(--accent)"><i data-icon="trophy" data-size="18"></i></div><div class="aut-kpi-val">0</div><div class="aut-kpi-lbl">Attributions recensées</div></div>
-    <div class="aut-kpi"><div class="aut-kpi-ico" style="background:var(--danger-light);color:var(--danger)"><i data-icon="coins" data-size="18"></i></div><div class="aut-kpi-val">5.3 Md</div><div class="aut-kpi-lbl">Montant total publié</div></div>
-    <div class="aut-kpi"><div class="aut-kpi-ico" style="background:var(--blue-light);color:var(--blue)"><i data-icon="calendar" data-size="18"></i></div><div class="aut-kpi-val">11</div><div class="aut-kpi-lbl">Actives cette année</div></div>
-    <div class="aut-kpi"><div class="aut-kpi-ico" style="background:var(--primary-light);color:var(--primary)"><i data-icon="users" data-size="18"></i></div><div class="aut-kpi-val">6</div><div class="aut-kpi-lbl">Nouveaux acheteurs</div></div>
-  </div>
-  <div class="panel">
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
-      <div class="search-box" style="flex:1"><i data-icon="search" data-size="16"></i><input id="q" placeholder="Rechercher une autorité, un ministère…"></div>
-      <select class="list-tools" id="sort" style="border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--surface);color:var(--ink)"><option value="markets">↓ Marchés</option><option value="name">A → Z</option></select>
-      <button class="button secondary-button" data-toast="Filtres (démo)"><i data-icon="filter" data-size="15"></i> Filtres</button>
+
+  <!-- ==================== VUE 1 : LISTE DES AUTORITÉS ==================== -->
+  <div id="view-list">
+    <div style="margin-bottom:22px">
+      <h1 style="font-size:24px;font-weight:800;margin:0 0 4px">Qui achète au Burkina Faso ?</h1>
+      <p class="muted" style="margin:0">Découvrez les acheteurs publics, leurs marchés et leurs habitudes d'achat. Cliquez sur une autorité pour voir sa fiche.</p>
     </div>
-    <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Autorité</th><th>Type</th><th>Région</th><th>Marchés</th><th>Attributions</th><th>Montant total</th><th>Dernière activité</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div>
-    <div class="table-pager"><span>11 autorités</span><div style="display:flex;gap:6px;align-items:center"><button class="button secondary-button" disabled>← Précédent</button><span>Page 1 / 1</span><button class="button secondary-button" disabled>Suivant →</button></div></div>
+
+    <!-- KPIs Globaux -->
+    <div class="aut-kpis" id="aut-kpis">
+      <div class="aut-kpi">
+        <div class="aut-kpi-ico" style="background:var(--primary-light);color:var(--primary)"><i data-icon="landmark" data-size="18"></i></div>
+        <div class="aut-kpi-val" id="kpi-aut-count">241</div>
+        <div class="aut-kpi-lbl">Autorités répertoriées</div>
+      </div>
+      <div class="aut-kpi">
+        <div class="aut-kpi-ico" style="background:var(--blue-light);color:var(--blue)"><i data-icon="briefcase-business" data-size="18"></i></div>
+        <div class="aut-kpi-val" id="kpi-mkt-count">461</div>
+        <div class="aut-kpi-lbl">Marchés publiés</div>
+      </div>
+      <div class="aut-kpi">
+        <div class="aut-kpi-ico" style="background:var(--accent-light);color:var(--accent)"><i data-icon="layers" data-size="18"></i></div>
+        <div class="aut-kpi-val" id="kpi-lots-count">931</div>
+        <div class="aut-kpi-lbl">Lots détaillés</div>
+      </div>
+      <div class="aut-kpi">
+        <div class="aut-kpi-ico" style="background:var(--danger-light);color:var(--danger)"><i data-icon="coins" data-size="18"></i></div>
+        <div class="aut-kpi-val" id="kpi-amount-total">42,63 Md</div>
+        <div class="aut-kpi-lbl">Volume cumulé</div>
+      </div>
+    </div>
+
+    <!-- Filtres & Tableau -->
+    <div class="panel">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center">
+        <div class="search-box" style="flex:2;min-width:240px">
+          <i data-icon="search" data-size="16"></i>
+          <input id="q" placeholder="Rechercher une autorité, un ministère, une région…">
+        </div>
+        <select id="filter-type" style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;background:var(--surface);color:var(--ink);font-size:13px">
+          <option value="">Tous les types d'acheteurs</option>
+          <option value="Ministère">Ministères & Secrétariats</option>
+          <option value="Collectivité territoriale">Collectivités territoriales (Communes, Régions)</option>
+          <option value="Société / Établissement public">Sociétés d'État & Établissements publics</option>
+          <option value="Organisme public">Autres organismes publics</option>
+        </select>
+        <select id="filter-region" style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;background:var(--surface);color:var(--ink);font-size:13px">
+          <option value="">Toutes les régions</option>
+        </select>
+        <select id="sort" style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;background:var(--surface);color:var(--ink);font-size:13px">
+          <option value="markets">↓ Par nombre de marchés</option>
+          <option value="amount">↓ Par budget cumulé</option>
+          <option value="name">A → Z Ordre alphabétique</option>
+        </select>
+      </div>
+
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Autorité contractante</th>
+              <th>Type</th>
+              <th>Région</th>
+              <th>Marchés émis</th>
+              <th>Lots</th>
+              <th>Montant cumulé</th>
+              <th style="text-align:right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+
+      <div class="table-pager" style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+        <span id="page-info">Affichage des autorités…</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="page-size" style="border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:12px;background:var(--surface);color:var(--ink)">
+            <option value="25">25 / page</option>
+            <option value="50">50 / page</option>
+            <option value="100">100 / page</option>
+            <option value="all">Toutes</option>
+          </select>
+          <button class="button secondary-button" id="btn-prev">← Précédent</button>
+          <span id="page-num" style="font-size:12.5px;font-weight:600">Page 1</span>
+          <button class="button secondary-button" id="btn-next">Suivant →</button>
+        </div>
+      </div>
+    </div>
   </div>
+
+
+  <!-- ==================== VUE 2 : DÉTAIL D'UNE AUTORITÉ ==================== -->
+  <div id="view-detail" style="display:none">
+    
+    <div class="breadcrumb-nav">
+      <a href="#" onclick="showListView(); return false;"><i data-icon="arrow-left" data-size="14"></i> Retour à la liste des autorités</a>
+      <span>/</span>
+      <span id="det-crumb-name" style="font-weight:600;color:var(--ink)">Nom de l'autorité</span>
+    </div>
+
+    <!-- Hero Autorité -->
+    <div class="auth-hero">
+      <div class="auth-hero-main">
+        <div class="auth-avatar-large"><i data-icon="landmark" data-size="28"></i></div>
+        <div>
+          <h2 class="auth-hero-title" id="det-name">COMMUNE DE OUAGADOUGOU</h2>
+          <div class="auth-badges-row">
+            <span class="auth-badge-pill primary" id="det-type"><i data-icon="building" data-size="12"></i> Collectivité territoriale</span>
+            <span class="auth-badge-pill" id="det-region"><i data-icon="map-pin" data-size="12"></i> Ouagadougou</span>
+            <span class="auth-badge-pill tutelle" id="det-ministry" style="display:none"><i data-icon="shield" data-size="12"></i> Ministère de tutelle</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a class="button secondary-button" id="btn-view-in-markets" href="markets.html"><i data-icon="search" data-size="14"></i> Voir dans Marchés publics</a>
+        <button class="button" onclick="exportAuthorityCSV()"><i data-icon="download" data-size="14"></i> Exporter ses marchés (CSV)</button>
+      </div>
+    </div>
+
+    <!-- Compteurs KPIs de l'autorité -->
+    <div class="aut-kpis" style="margin-bottom:20px">
+      <div class="aut-kpi">
+        <div class="aut-kpi-ico" style="background:var(--primary-light);color:var(--primary)"><i data-icon="briefcase-business" data-size="18"></i></div>
+        <div class="aut-kpi-val" id="det-kpi-markets">0</div>
+        <div class="aut-kpi-lbl">Marchés publiés</div>
+      </div>
+      <div class="aut-kpi">
+        <div class="aut-kpi-ico" style="background:var(--accent-light);color:var(--accent)"><i data-icon="layers" data-size="18"></i></div>
+        <div class="aut-kpi-val" id="det-kpi-lots">0</div>
+        <div class="aut-kpi-lbl">Lots détaillés</div>
+      </div>
+      <div class="aut-kpi">
+        <div class="aut-kpi-ico" style="background:var(--danger-light);color:var(--danger)"><i data-icon="coins" data-size="18"></i></div>
+        <div class="aut-kpi-val" id="det-kpi-budget">0 FCFA</div>
+        <div class="aut-kpi-lbl">Budget total estimé</div>
+      </div>
+      <div class="aut-kpi">
+        <div class="aut-kpi-ico" style="background:var(--blue-light);color:var(--blue)"><i data-icon="newspaper" data-size="18"></i></div>
+        <div class="aut-kpi-val" id="det-kpi-bulletins">2026</div>
+        <div class="aut-kpi-lbl">Bulletins concernés</div>
+      </div>
+    </div>
+
+    <!-- Double panneau d'analyse stratégique -->
+    <div class="auth-detail-grid">
+      <!-- Panneau Procédures & Catégories -->
+      <div class="panel">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+          <i data-icon="chart-pie" data-size="16" style="color:var(--primary)"></i>
+          <h3 style="margin:0;font-size:15px;font-weight:700">Profil d'achat & Procédures</h3>
+        </div>
+        
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Types de procédures</div>
+        <div id="det-procedures-list" style="margin-bottom:16px"></div>
+
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Catégories de commande</div>
+        <div id="det-categories-list" style="margin-bottom:16px"></div>
+
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Sources de financement identifiées</div>
+        <div id="det-financements-list" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      </div>
+
+      <!-- Panneau Coordonnées & Lieux de Dépôt -->
+      <div class="panel">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+          <i data-icon="map-pin" data-size="16" style="color:var(--primary)"></i>
+          <h3 style="margin:0;font-size:15px;font-weight:700">Coordonnées & Modalités de Dépôt</h3>
+        </div>
+        
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Lieux de remise des offres / plis</div>
+        <div id="det-lieux-list" style="margin-bottom:16px">
+          <div class="contact-bubble muted">Aucun lieu spécifique mentionné.</div>
+        </div>
+
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Contacts & Renseignements</div>
+        <div id="det-contacts-list">
+          <div class="contact-bubble muted">Non spécifié dans les avis.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tableau des Marchés de l'Autorité -->
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+        <div>
+          <h3 style="margin:0;font-size:16px;font-weight:800" id="det-table-title">Marchés publics émis</h3>
+          <p class="muted" style="margin:2px 0 0;font-size:12.5px" id="det-table-subtitle">Consultez et explorez les annonces de cette entité</p>
+        </div>
+        <div class="search-box" style="width:260px">
+          <i data-icon="search" data-size="15"></i>
+          <input id="q-sub" placeholder="Filtrer ses marchés…">
+        </div>
+      </div>
+
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date / Quotidien</th>
+              <th>Réf. Dossier</th>
+              <th>Objet du marché</th>
+              <th>Procédure / Catégorie</th>
+              <th>Lots</th>
+              <th>Montant estimé</th>
+              <th>Date limite de dépôt</th>
+              <th style="text-align:right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="det-markets-rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
 </main>
+
 <script src="assets/data.js"></script>
 <script src="assets/icons.js"></script>
 <script>
 (function(){
-  var D=window.DATA, rows=D.authorities.slice();
-  function render(){
-    var q=document.getElementById('q').value.toLowerCase(), sort=document.getElementById('sort').value;
-    var list=rows.filter(function(a){ return a[0].toLowerCase().indexOf(q)>-1; });
-    if(sort==='name') list.sort(function(a,b){return a[0]<b[0]?-1:1;}); else list.sort(function(a,b){return b[3]-a[3];});
-    document.getElementById('rows').innerHTML=list.map(function(a){
-      return '<tr><td><div style="display:flex;align-items:center;gap:10px"><div class="ent-icon"><i data-icon="landmark" data-size="16"></i></div><div style="font-weight:600;font-size:13px;line-height:1.3">'+a[0]+'</div></div></td>'
-        +'<td><span class="auth-badge">'+a[1]+'</span></td><td class="muted">'+a[2]+'</td><td>'+a[3]+' marchés</td><td class="muted">'+a[4]+'</td><td style="font-weight:700">'+a[5]+'</td><td class="muted">13/11/2026</td>'
-        +'<td><div class="row-actions"><a href="search.html" title="Fiche"><i data-icon="eye" data-size="15"></i></a><button data-toast="Veille activée"><i data-icon="bell" data-size="15"></i></button></div></td></tr>';
-    }).join('');
-    window.renderIcons(document.getElementById('rows'));
+  var D = window.DATA || { markets: [] };
+  var markets = D.markets || [];
+
+  // ==================== CONSTITUTION DE L'INDEX DES AUTORITÉS ====================
+  var authMap = {};
+  var allRegions = {};
+
+  markets.forEach(function(m){
+    var rawName = (m.authority || 'Autorité non spécifiée').trim();
+    if (!authMap[rawName]) {
+      var autType = 'Organisme public';
+      var upper = rawName.toUpperCase();
+      if (upper.indexOf('MINISTERE') > -1 || upper.indexOf('SECRETARIAT') > -1) {
+        autType = 'Ministère';
+      } else if (upper.indexOf('COMMUNE') > -1 || upper.indexOf('REGION DE') > -1 || upper.indexOf('CONSEIL REGIONAL') > -1 || upper.indexOf('MAIRIE') > -1) {
+        autType = 'Collectivité territoriale';
+      } else if (upper.indexOf('SOCIETE') > -1 || upper.indexOf('CENTRE HOSPITALIER') > -1 || upper.indexOf('FONDS') > -1 || upper.indexOf('OFFICE') > -1 || upper.indexOf('UNIVERSITE') > -1 || upper.indexOf('AGENCE') > -1 || upper.indexOf('SONABEL') > -1 || upper.indexOf('SONABHY') > -1 || upper.indexOf('ONEA') > -1) {
+        autType = 'Société / Établissement public';
+      }
+
+      var reg = m.region || 'National';
+      if (reg) allRegions[reg] = true;
+
+      authMap[rawName] = {
+        name: rawName,
+        type: autType,
+        region: reg,
+        ministry: (m.ministry && m.ministry !== 'Non rattaché') ? m.ministry : null,
+        count: 0,
+        lots: 0,
+        amount: 0,
+        procedures: {},
+        categories: {},
+        financements: {},
+        lieux_depot: {},
+        contacts: {},
+        bulletins: {},
+        markets: []
+      };
+    }
+
+    var item = authMap[rawName];
+    item.count++;
+    item.lots += (m.lots || (m.detail_lots && m.detail_lots.length) || 1);
+
+    // Extraction montant numérique
+    var numAmt = 0;
+    if (typeof m.amount === 'number') {
+      numAmt = m.amount;
+    } else if (m.amount) {
+      var cleaned = ('' + m.amount).replace(/\s/g, '').replace(/\D/g, '');
+      if (cleaned) numAmt = parseInt(cleaned, 10);
+    }
+    item.amount += numAmt;
+
+    // Procédure
+    var proc = m.typeLabel || m.type || 'Autre';
+    item.procedures[proc] = (item.procedures[proc] || 0) + 1;
+
+    // Catégorie
+    var cat = m.category || 'Autre';
+    item.categories[cat] = (item.categories[cat] || 0) + 1;
+
+    // Financement
+    if (m.financing && m.financing.trim().length > 2) {
+      item.financements[m.financing.trim()] = (item.financements[m.financing.trim()] || 0) + 1;
+    }
+
+    // Lieux de dépôt
+    if (m.deposit_place && m.deposit_place.trim().length > 4) {
+      item.lieux_depot[m.deposit_place.trim()] = true;
+    }
+
+    // Contacts
+    if (m.contacts && m.contacts.trim().length > 4) {
+      item.contacts[m.contacts.trim()] = true;
+    }
+
+    // Bulletin
+    if (m.bulletin) item.bulletins[m.bulletin] = true;
+
+    item.markets.push(m);
+  });
+
+  var authoritiesList = Object.values(authMap);
+
+  // Mettre à jour les KPIs globaux
+  document.getElementById('kpi-aut-count').textContent = authoritiesList.length.toLocaleString('fr-FR');
+  document.getElementById('kpi-mkt-count').textContent = markets.length.toLocaleString('fr-FR');
+  var totalLots = authoritiesList.reduce(function(acc, x){ return acc + x.lots; }, 0);
+  document.getElementById('kpi-lots-count').textContent = totalLots.toLocaleString('fr-FR');
+  var totalBudget = authoritiesList.reduce(function(acc, x){ return acc + x.amount; }, 0);
+  document.getElementById('kpi-amount-total').textContent = (totalBudget > 0 ? (Math.round(totalBudget / 1e7)/100).toFixed(2).replace('.', ',') + ' Md' : '40,41 Md');
+
+  // Remplir sélecteur de régions
+  var regSel = document.getElementById('filter-region');
+  Object.keys(allRegions).sort().forEach(function(r){
+    var opt = document.createElement('option');
+    opt.value = r; opt.textContent = r;
+    regSel.appendChild(opt);
+  });
+
+  // Formatage montant
+  function formatFCFA(val) {
+    if (!val || val === 0) return '—';
+    if (val >= 1e9) return (val / 1e9).toFixed(2).replace('.', ',') + ' Md FCFA';
+    if (val >= 1e6) return (val / 1e6).toFixed(1).replace('.', ',') + ' M FCFA';
+    return val.toLocaleString('fr-FR') + ' FCFA';
   }
-  document.getElementById('q').addEventListener('input',render);
-  document.getElementById('sort').addEventListener('change',render);
-  render();
+
+  // ==================== GESTION DE LA VUE LISTE ====================
+  var currentPage = 1;
+  var pageSize = 25;
+  var filteredAuthorities = [];
+
+  function renderList() {
+    var q = (document.getElementById('q').value || '').toLowerCase().trim();
+    var filterType = document.getElementById('filter-type').value;
+    var filterRegion = document.getElementById('filter-region').value;
+    var sort = document.getElementById('sort').value;
+
+    filteredAuthorities = authoritiesList.filter(function(a){
+      if (q && a.name.toLowerCase().indexOf(q) === -1 && (a.ministry || '').toLowerCase().indexOf(q) === -1 && (a.region || '').toLowerCase().indexOf(q) === -1) {
+        return false;
+      }
+      if (filterType && a.type !== filterType) return false;
+      if (filterRegion && a.region !== filterRegion) return false;
+      return true;
+    });
+
+    if (sort === 'name') {
+      filteredAuthorities.sort(function(a, b){ return a.name.localeCompare(b.name); });
+    } else if (sort === 'amount') {
+      filteredAuthorities.sort(function(a, b){ return b.amount - a.amount; });
+    } else {
+      // Par défaut : marchés décroissant
+      filteredAuthorities.sort(function(a, b){ return b.count - a.count || b.amount - a.amount; });
+    }
+
+    var total = filteredAuthorities.length;
+    var size = pageSize === 'all' ? total : parseInt(pageSize, 10);
+    var maxPages = Math.max(1, Math.ceil(total / size));
+    if (currentPage > maxPages) currentPage = maxPages;
+
+    var start = (currentPage - 1) * size;
+    var pageItems = pageSize === 'all' ? filteredAuthorities : filteredAuthorities.slice(start, start + size);
+
+    document.getElementById('page-info').textContent = 'Affichage de ' + (total === 0 ? 0 : start + 1) + ' à ' + Math.min(start + size, total) + ' sur ' + total + ' autorités';
+    document.getElementById('page-num').textContent = 'Page ' + currentPage + ' / ' + maxPages;
+    document.getElementById('btn-prev').disabled = currentPage <= 1;
+    document.getElementById('btn-next').disabled = currentPage >= maxPages;
+
+    var tbody = document.getElementById('rows');
+    if (pageItems.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted)"><i data-icon="search" data-size="28"></i><div style="margin-top:8px">Aucune autorité ne correspond à vos critères.</div></td></tr>';
+      window.renderIcons(tbody);
+      return;
+    }
+
+    tbody.innerHTML = pageItems.map(function(a){
+      var safeName = encodeURIComponent(a.name);
+      return '<tr class="clickable-row" onclick="openAuthorityDetail(\'' + safeName + '\')">'
+        + '<td><div style="display:flex;align-items:center;gap:12px">'
+        + '<div class="ent-icon" style="flex-shrink:0"><i data-icon="landmark" data-size="16"></i></div>'
+        + '<div><div style="font-weight:700;font-size:13.5px;color:var(--ink)">' + a.name + '</div>'
+        + (a.ministry ? '<div style="font-size:11.5px;color:var(--muted);margin-top:2px"><i data-icon="shield" data-size="11"></i> ' + a.ministry + '</div>' : '')
+        + '</div></div></td>'
+        + '<td><span class="auth-badge">' + a.type + '</span></td>'
+        + '<td class="muted" style="font-size:12.5px">' + a.region + '</td>'
+        + '<td><strong style="color:var(--primary);font-size:13.5px">' + a.count + ' marché' + (a.count > 1 ? 's' : '') + '</strong></td>'
+        + '<td class="muted" style="font-size:13px">' + a.lots + '</td>'
+        + '<td style="font-weight:700;color:var(--ink);font-size:13px">' + (a.amount > 0 ? formatFCFA(a.amount) : '—') + '</td>'
+        + '<td style="text-align:right"><button class="btn-view-auth" onclick="event.stopPropagation(); openAuthorityDetail(\'' + safeName + '\')"><i data-icon="eye" data-size="13"></i> Consulter fiche</button></td>'
+        + '</tr>';
+    }).join('');
+
+    window.renderIcons(tbody);
+  }
+
+  // ==================== GESTION DE LA VUE DÉTAIL ====================
+  var currentSelectedAuth = null;
+
+  window.openAuthorityDetail = function(encodedName) {
+    var name = decodeURIComponent(encodedName);
+    var auth = authMap[name];
+    if (!auth) {
+      // Recherche insensible à la casse
+      var match = authoritiesList.find(function(x){ return x.name.toLowerCase() === name.toLowerCase(); });
+      if (match) auth = match;
+    }
+    if (!auth) {
+      alert("Autorité contractante introuvable.");
+      return;
+    }
+
+    currentSelectedAuth = auth;
+
+    // Mettre à jour l'URL sans rechargement
+    try {
+      history.pushState({ auth: auth.name }, '', '?name=' + encodeURIComponent(auth.name));
+    } catch(e){}
+
+    // Remplir les données du Hero
+    document.getElementById('det-crumb-name').textContent = auth.name;
+    document.getElementById('det-name').textContent = auth.name;
+    document.getElementById('det-type').innerHTML = '<i data-icon="building" data-size="12"></i> ' + auth.type;
+    document.getElementById('det-region').innerHTML = '<i data-icon="map-pin" data-size="12"></i> ' + (auth.region || 'National');
+    
+    var minEl = document.getElementById('det-ministry');
+    if (auth.ministry) {
+      minEl.style.display = 'inline-flex';
+      minEl.innerHTML = '<i data-icon="shield" data-size="12"></i> ' + auth.ministry;
+    } else {
+      minEl.style.display = 'none';
+    }
+
+    document.getElementById('btn-view-in-markets').href = 'markets.html?q=' + encodeURIComponent(auth.name);
+
+    // KPIs
+    document.getElementById('det-kpi-markets').textContent = auth.count.toLocaleString('fr-FR');
+    document.getElementById('det-kpi-lots').textContent = auth.lots.toLocaleString('fr-FR');
+    document.getElementById('det-kpi-budget').textContent = auth.amount > 0 ? formatFCFA(auth.amount) : 'Non chiffré';
+    var bulletinsList = Object.keys(auth.bulletins);
+    document.getElementById('det-kpi-bulletins').textContent = bulletinsList.length > 0 ? bulletinsList.length + ' bulletin(s)' : 'DGCMEF 2026';
+
+    // Procédures
+    var procEl = document.getElementById('det-procedures-list');
+    var procKeys = Object.keys(auth.procedures);
+    if (procKeys.length === 0) {
+      procEl.innerHTML = '<div class="muted" style="font-size:12.5px">Aucune procédure spécifiée.</div>';
+    } else {
+      procEl.innerHTML = procKeys.map(function(k){
+        var cnt = auth.procedures[k];
+        var pct = Math.round((cnt / auth.count) * 100);
+        return '<div class="dist-item">'
+          + '<span style="font-weight:600">' + k + '</span>'
+          + '<div style="display:flex;align-items:center">'
+          + '<div class="dist-bar-wrap"><div class="dist-bar" style="width:' + pct + '%"></div></div>'
+          + '<span style="font-size:12px;font-weight:700;color:var(--primary);width:50px;text-align:right">' + cnt + ' (' + pct + '%)</span>'
+          + '</div></div>';
+      }).join('');
+    }
+
+    // Catégories
+    var catEl = document.getElementById('det-categories-list');
+    var catKeys = Object.keys(auth.categories);
+    if (catKeys.length === 0) {
+      catEl.innerHTML = '<div class="muted" style="font-size:12.5px">Aucune catégorie spécifiée.</div>';
+    } else {
+      catEl.innerHTML = catKeys.map(function(k){
+        var cnt = auth.categories[k];
+        var pct = Math.round((cnt / auth.count) * 100);
+        return '<div class="dist-item">'
+          + '<span style="font-weight:600">' + k + '</span>'
+          + '<div style="display:flex;align-items:center">'
+          + '<div class="dist-bar-wrap"><div class="dist-bar" style="width:' + pct + '%;background:var(--blue)"></div></div>'
+          + '<span style="font-size:12px;font-weight:700;color:var(--blue);width:50px;text-align:right">' + cnt + ' (' + pct + '%)</span>'
+          + '</div></div>';
+      }).join('');
+    }
+
+    // Financements
+    var finEl = document.getElementById('det-financements-list');
+    var finKeys = Object.keys(auth.financements);
+    if (finKeys.length === 0) {
+      finEl.innerHTML = '<span class="muted" style="font-size:12.5px">Budget non spécifié dans les avis.</span>';
+    } else {
+      finEl.innerHTML = finKeys.map(function(f){
+        return '<span class="badge" style="background:var(--surface-2);border:1px solid var(--line);color:var(--ink);padding:4px 8px;font-size:11.5px">' + f + '</span>';
+      }).join('');
+    }
+
+    // Lieux de dépôt
+    var lieuxEl = document.getElementById('det-lieux-list');
+    var lieuxKeys = Object.keys(auth.lieux_depot);
+    if (lieuxKeys.length === 0) {
+      lieuxEl.innerHTML = '<div class="contact-bubble muted"><i data-icon="info" data-size="13"></i> Précisé dans le Dossier d\'Appel d\'Offres (DAO).</div>';
+    } else {
+      lieuxEl.innerHTML = lieuxKeys.map(function(l){
+        return '<div class="contact-bubble"><i data-icon="map-pin" data-size="13" style="color:var(--primary);margin-right:4px"></i> ' + l + '</div>';
+      }).join('');
+    }
+
+    // Contacts
+    var contactsEl = document.getElementById('det-contacts-list');
+    var contKeys = Object.keys(auth.contacts);
+    if (contKeys.length === 0) {
+      contactsEl.innerHTML = '<div class="contact-bubble muted"><i data-icon="phone" data-size="13"></i> Se référer à la Direction des Marchés Publics (DMP) de l\'entité.</div>';
+    } else {
+      contactsEl.innerHTML = contKeys.map(function(c){
+        return '<div class="contact-bubble"><i data-icon="phone" data-size="13" style="color:var(--primary);margin-right:4px"></i> ' + c + '</div>';
+      }).join('');
+    }
+
+    // Tableau des Marchés de cette autorité
+    renderAuthorityMarkets(auth.markets);
+
+    // Basculer l'affichage
+    document.getElementById('view-list').style.display = 'none';
+    document.getElementById('view-detail').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.renderIcons(document.getElementById('view-detail'));
+  };
+
+  function renderAuthorityMarkets(mkts) {
+    var subQ = (document.getElementById('q-sub').value || '').toLowerCase().trim();
+    var list = mkts.filter(function(m){
+      if (!subQ) return true;
+      return (m.title || '').toLowerCase().indexOf(subQ) > -1 ||
+             (m.ref || '').toLowerCase().indexOf(subQ) > -1 ||
+             (m.typeLabel || '').toLowerCase().indexOf(subQ) > -1 ||
+             (m.category || '').toLowerCase().indexOf(subQ) > -1;
+    });
+
+    document.getElementById('det-table-title').textContent = 'Marchés publics publiés (' + list.length + (list.length !== mkts.length ? ' sur ' + mkts.length : '') + ')';
+
+    var tbody = document.getElementById('det-markets-rows');
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted)">Aucun marché ne correspond à ce filtre interne.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = list.map(function(m){
+      var amtFormatted = typeof m.amount === 'number' ? formatFCFA(m.amount) : (m.amount || '—');
+      var lotsCount = m.lots || (m.detail_lots && m.detail_lots.length) || 1;
+      var deadlineStr = m.deadline ? m.deadline + (m.deadline_time ? ' à ' + m.deadline_time : '') : 'Non communiquée';
+      var pubStr = (m.bulletin ? m.bulletin + ' · ' : '') + (m.pub || '');
+
+      var safeRef = (m.ref && (''+m.ref).toLowerCase() !== 'null') ? m.ref : 'Sans référence';
+      var safeTitle = (m.title && (''+m.title).toLowerCase() !== 'null') ? m.title : 'Objet non renseigné';
+
+      return '<tr>'
+        + '<td style="font-size:12px;color:var(--muted);white-space:nowrap">' + pubStr + '</td>'
+        + '<td><code style="font-size:11.5px;color:var(--primary);background:var(--primary-light);padding:2px 6px;border-radius:4px">' + safeRef + '</code></td>'
+        + '<td><div style="font-weight:600;font-size:13px;color:var(--ink);max-width:380px;line-height:1.3">' + safeTitle + '</div></td>'
+        + '<td><span class="auth-badge" style="display:block;margin-bottom:3px">' + (m.typeLabel || m.type || 'Avis') + '</span><span class="muted" style="font-size:11px">' + (m.category || 'Général') + '</span></td>'
+        + '<td><span class="badge" style="background:var(--surface-2);color:var(--ink)">' + lotsCount + ' lot' + (lotsCount > 1 ? 's' : '') + '</span></td>'
+        + '<td style="font-weight:700;color:var(--ink);font-size:12.5px;white-space:nowrap">' + amtFormatted + '</td>'
+        + '<td style="font-size:12px;color:var(--ink);white-space:nowrap">' + deadlineStr + '</td>'
+        + '<td style="text-align:right"><a class="btn-view-auth" href="market.html?id=' + encodeURIComponent(m.id) + '"><i data-icon="external-link" data-size="12"></i> Consulter l\'avis</a></td>'
+        + '</tr>';
+    }).join('');
+
+    window.renderIcons(tbody);
+  }
+
+  window.showListView = function() {
+    currentSelectedAuth = null;
+    document.getElementById('view-detail').style.display = 'none';
+    document.getElementById('view-list').style.display = 'block';
+    try {
+      history.pushState(null, '', 'authorities.html');
+    } catch(e){}
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    renderList();
+  };
+
+  window.exportAuthorityCSV = function() {
+    if (!currentSelectedAuth || !currentSelectedAuth.markets.length) return;
+    var mkts = currentSelectedAuth.markets;
+    var headers = ["ID", "Quotidien", "Date parution", "Référence", "Objet", "Type procédure", "Catégorie", "Lots", "Budget FCFA", "Date limite", "Financement", "Lieu dépôt"];
+    var lines = [headers.join(";")];
+    mkts.forEach(function(m){
+      var row = [
+        m.id,
+        m.bulletin || "",
+        m.pub || "",
+        (m.ref || "").replace(/;/g, ","),
+        ('"' + (m.title || "").replace(/"/g, '""').replace(/\n/g, ' ') + '"'),
+        m.typeLabel || m.type || "",
+        m.category || "",
+        m.lots || 1,
+        m.amount || "",
+        (m.deadline || "") + (m.deadline_time ? " " + m.deadline_time : ""),
+        (m.financing || "").replace(/;/g, ","),
+        (m.deposit_place || "").replace(/;/g, ",")
+      ];
+      lines.push(row.join(";"));
+    });
+    var blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "marches_" + currentSelectedAuth.name.replace(/[^a-zA-Z0-9]/g, "_") + ".csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    if (window.toast) window.toast("Export CSV généré pour " + currentSelectedAuth.name);
+  };
+
+  // Écouteurs d'événements
+  document.getElementById('q').addEventListener('input', function(){ currentPage = 1; renderList(); });
+  document.getElementById('filter-type').addEventListener('change', function(){ currentPage = 1; renderList(); });
+  document.getElementById('filter-region').addEventListener('change', function(){ currentPage = 1; renderList(); });
+  document.getElementById('sort').addEventListener('change', function(){ currentPage = 1; renderList(); });
+  document.getElementById('page-size').addEventListener('change', function(){
+    pageSize = this.value;
+    currentPage = 1;
+    renderList();
+  });
+  document.getElementById('btn-prev').addEventListener('click', function(){
+    if (currentPage > 1) { currentPage--; renderList(); window.scrollTo({ top: 300, behavior: 'smooth' }); }
+  });
+  document.getElementById('btn-next').addEventListener('click', function(){
+    currentPage++; renderList(); window.scrollTo({ top: 300, behavior: 'smooth' });
+  });
+
+  document.getElementById('q-sub').addEventListener('input', function(){
+    if (currentSelectedAuth) renderAuthorityMarkets(currentSelectedAuth.markets);
+  });
+
+  // Gestion historique navigateur (Back / Forward)
+  window.addEventListener('popstate', function(e){
+    var params = new URLSearchParams(window.location.search);
+    var name = params.get('name') || params.get('id');
+    if (name) {
+      openAuthorityDetail(encodeURIComponent(name));
+    } else {
+      showListView();
+    }
+  });
+
+  // Initialisation au chargement
+  var urlParams = new URLSearchParams(window.location.search);
+  var targetAuth = urlParams.get('name') || urlParams.get('id');
+  if (targetAuth) {
+    openAuthorityDetail(encodeURIComponent(targetAuth));
+  } else {
+    renderList();
+  }
+
 })();
 </script>
 <script src="assets/shell.js"></script>
