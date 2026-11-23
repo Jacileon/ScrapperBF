@@ -1,0 +1,19 @@
+# ============================================================
+# Dépendances du PIPELINE D'INGESTION (dev / tâche planifiée)
+# Téléchargement des bulletins -> OCR -> découpage -> extraction LLM
+# -> base SQLite -> export du front (data.js / data.json).
+#
+# À installer UNIQUEMENT là où tourne l'ingestion. Inutile sur un
+# VPS qui ne fait que servir le site déjà généré.
+# ============================================================
+pdfplumber==0.11.10
+pypdfium2
+Pillow==12.3.0
+PyYAML==6.0.3
+requests==2.34.2
+urllib3>=2.0
+openai==3.40.0
+
+# Chaîne OCR / markdown via PyMuPDF (selon la variante utilisée)
+pymupdf
+pymupdf4llm

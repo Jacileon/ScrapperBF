@@ -1,0 +1,22 @@
+# ============================================================
+# systemd (oneshot) — ingestion quotidienne des marchés.
+# Déclenché par veillebf-pipeline.timer.
+# ADAPTER ExecStart à votre point d'entrée réel du pipeline
+# (ex : runner.py, pipeline.py ou extract_and_load_period.py),
+# suivi de la régénération du front.
+# ============================================================
+[Unit]
+Description=Veille BF - Ingestion quotidienne (download -> OCR -> LLM -> DB)
+After=network.target
+
+[Service]
+Type=oneshot
+User=veillebf
+Group=veillebf
+WorkingDirectory=/opt/veillebf
+EnvironmentFile=-/opt/veillebf/.env
+# 1) Ingestion (à adapter)
+ExecStart=/opt/veillebf/.venv/bin/python extract_and_load_period.py
+# 2) Régénération des données servies au front
+ExecStartPost=/opt/veillebf/.venv/bin/python export_db_to_front.py
+TimeoutStartSec=3600

@@ -1,0 +1,40 @@
+# Rien de tout cela n'entre dans l'image web prod ("se débarrasser de l'inutile")
+.git/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Dossiers de travail / artefacts régénérables
+scratch/
+files/
+telechargements_pdf_classes/
+output_pipeline/
+export_marches/
+bench_*.json
+bench_report.md
+
+# Sources du pipeline d'ingestion (hors image web)
+reader_core/
+prod_pipeline/
+tests/
+extract_*.py
+pipeline*.py
+download_and_classify_*.py
+organiser_*.py
+segment_and_crop_avis.py
+scan_communiques_and_fonts.py
+split_resultats_sections.py
+sector_classifier.py
+avis_parallel_extractor.py
+pdf_downloader.py
+free_ai_gateway.py
+check_llm.py
+runner.py
+progression.py
+find_creme.py
+
+# Secrets & données locales
+.env
+model_keys.json
+*.md

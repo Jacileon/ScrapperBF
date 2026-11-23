@@ -1,0 +1,21 @@
+# ============================================================
+# systemd — serveur web & API Veille BF (uvicorn)
+# cp deploy/veillebf.service /etc/systemd/system/
+# systemctl enable --now veillebf
+# ============================================================
+[Unit]
+Description=Veille BF - Serveur web & API (FastAPI/uvicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=veillebf
+Group=veillebf
+WorkingDirectory=/opt/veillebf
+EnvironmentFile=-/opt/veillebf/.env
+ExecStart=/opt/veillebf/.venv/bin/uvicorn server_front:app --host 127.0.0.1 --port 8000 --workers 2
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

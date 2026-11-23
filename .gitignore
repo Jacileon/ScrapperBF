@@ -49,3 +49,13 @@ token_usage.json
 
 # Clés dédiées par modèle (local, jamais committer)
 model_keys.json
+
+# Dossiers de travail / artefacts régénérables (pas en prod, pas dans Git)
+scratch/
+output_pipeline/
+export_marches/
+telechargements_pdf_classes/
+bench_extracteur.json
+bench_juge.json
+bench_scoreur.json
+bench_report.md

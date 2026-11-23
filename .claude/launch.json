@@ -1,6 +1,7 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "ui-static", "runtimeExecutable": "python", "runtimeArgs": ["-m", "http.server", "8765", "--directory", "web/app"], "port": 8765 }
+    { "name": "ui-static", "runtimeExecutable": "python", "runtimeArgs": ["-m", "http.server", "8765", "--directory", "web/app"], "port": 8765 },
+    { "name": "veillebf", "runtimeExecutable": "python", "runtimeArgs": ["-m", "uvicorn", "server_front:app", "--host", "127.0.0.1", "--port", "8010"], "port": 8010 }
   ]
 }

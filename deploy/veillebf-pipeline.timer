@@ -1,0 +1,14 @@
+# ============================================================
+# systemd timer — lance l'ingestion chaque matin (05h30).
+# cp deploy/veillebf-pipeline.{service,timer} /etc/systemd/system/
+# systemctl enable --now veillebf-pipeline.timer
+# ============================================================
+[Unit]
+Description=Planifie l'ingestion quotidienne Veille BF
+
+[Timer]
+OnCalendar=*-*-* 05:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
