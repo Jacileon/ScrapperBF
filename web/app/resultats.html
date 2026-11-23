@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Résultats · VEILLE BF</title>
+<link rel="icon" href="assets/logo.svg">
+<link rel="stylesheet" href="assets/app.css">
+<link rel="stylesheet" href="assets/app-shell.css">
+<style>
+.res-card{gap:8px}
+.res-lot{margin-left:auto;font-size:11px;font-weight:700;color:var(--muted)}
+.res-winner{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:11px;background:var(--primary-light);margin-top:2px}
+.res-winner .rw-ico{width:32px;height:32px;border-radius:9px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.res-winner .rw-k{display:block;font-size:10.5px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.3px}
+.res-winner .rw-v{display:block;font-size:14px;font-weight:700;line-height:1.3}
+.res-winner.infr{background:var(--bg-alt);color:var(--muted);font-size:12.5px}
+.res-link{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;color:var(--primary);margin-top:2px}
+.res-link:hover{gap:8px}
+</style>
+</head>
+<body>
+<div id="app" data-page="resultats"></div>
+<main class="main" id="main-content">
+  <section class="markets-hero" style="margin-bottom:16px">
+    <p class="eyebrow">Attributions & délibérations</p>
+    <h1>Résultats des marchés</h1>
+    <p class="hero-copy">Qui a remporté quel marché, pour quel montant. Résultats provisoires publiés au Burkina Faso.</p>
+  </section>
+
+  <section class="stat-band" id="stats"></section>
+
+  <div class="filterbar">
+    <div class="search-box"><i data-icon="search" data-size="18"></i><input id="q" placeholder="Rechercher un objet, un attributaire, une autorité…"></div>
+    <select id="f-sector"><option value="">Tous les secteurs</option></select>
+    <select id="sort">
+      <option value="recent">Plus récents</option>
+      <option value="amount">Montant attribué le plus élevé</option>
+      <option value="plis">Plus de concurrents</option>
+    </select>
+  </div>
+  <div class="chip-row" id="chips">
+    <span class="chip-label">Statut</span>
+    <button class="chip-btn active" data-v="all">Tous</button>
+    <button class="chip-btn" data-v="won"><i data-icon="trophy" data-size="13"></i> Attribués</button>
+    <button class="chip-btn" data-v="infr">Infructueux</button>
+  </div>
+
+  <div class="results-bar"><div class="rb-count" id="count">—</div></div>
+  <section class="mk-grid" id="grid"></section>
+  <div id="more-wrap" style="text-align:center;margin-top:18px" hidden><button class="button secondary-button" id="btn-more">Afficher plus</button></div>
+
+  <div class="app-footer"><span>Résultats provisoires issus des bulletins officiels de la DGCMEF.</span><span>© 2026 Veille BF</span></div>
+</main>
+
+<script src="assets/data.js"></script>
+<script src="assets/data_resultats.js"></script>
+<script src="assets/icons.js"></script>
+<script src="assets/ui.js"></script>
+<script>
+(function(){
+  var DR = window.DATA_RESULTATS || {resultats:[],entreprises:[],stats:{},ready:false};
+  var list0 = DR.resultats || [], LIMIT = 60;
+  var state = {q:'', sector:'', sort:'recent', status:'all'};
+
+  if(!list0.length){
+    document.getElementById('stats').innerHTML='';
+    document.getElementById('grid').innerHTML='<div class="empty-soft"><div class="es-ico"><i data-icon="trophy" data-size="26"></i></div><strong>Résultats en cours d’extraction</strong>Les attributions seront disponibles ici très bientôt.</div>';
+    document.querySelector('.filterbar').style.display='none';
+    document.getElementById('chips').style.display='none';
+    document.getElementById('count').textContent='';
+    window.renderIcons(document.getElementById('main-content'));
+    return;
+  }
+
+  // Stats
+  var s = DR.stats || {};
+  document.getElementById('stats').innerHTML = [
+    ['', 'trophy', (s.nb_attributions||0).toLocaleString('fr-FR'), 'Marchés attribués'],
+    ['blue', 'coins', window.fmtAmount(s.montant_total), 'Montant total attribué'],
+    ['amber', 'building2', (s.nb_entreprises||0).toLocaleString('fr-FR'), 'Entreprises retenues']
+  ].map(function(x){ return '<div class="stat-tile '+x[0]+'"><div class="st-ico"><i data-icon="'+x[1]+'" data-size="22"></i></div><div><div class="st-val">'+x[2]+'</div><div class="st-lbl">'+x[3]+'</div></div></div>'; }).join('');
+
+  // Secteurs
+  var secs = {}; list0.forEach(function(r){ if(r.secteur) secs[r.secteur]=(secs[r.secteur]||0)+1; });
+  var selSec = document.getElementById('f-sector');
+  Object.keys(secs).sort(function(a,b){return secs[b]-secs[a];}).forEach(function(n){ var o=document.createElement('option'); o.value=n; o.textContent=n+' ('+secs[n]+')'; selSec.appendChild(o); });
+
+  function card(r){
+    var tag = r.infructueux
+      ? '<span class="deadline-pill closed"><i data-icon="x" data-size="12"></i> Infructueux</span>'
+      : '<span class="deadline-pill result"><i data-icon="trophy" data-size="12"></i> Attribué</span>';
+    var winner = r.infructueux
+      ? '<div class="res-winner infr"><i data-icon="info" data-size="14"></i> '+window.cleanVal(r.motif,'Aucune offre retenue')+'</div>'
+      : '<div class="res-winner"><div class="rw-ico"><i data-icon="trophy" data-size="15"></i></div><div style="min-width:0"><span class="rw-k">Attributaire</span><span class="rw-v">'+window.cleanVal(r.attributaire,'—')+'</span></div></div>';
+    var right = r.infructueux ? '<span class="mk-card-amount" style="color:var(--muted)">—</span>' : '<span class="mk-card-amount">'+(r.montant?window.fmtAmount(r.montant):'—')+'</span>';
+    var meta = '<span class="deadline-pill '+(r.infructueux?'closed':'result')+'"><i data-icon="calendar-days" data-size="12"></i> '+window.cleanVal(r.date,'—')+(r.nb_plis?' · '+r.nb_plis+' plis':'')+'</span>';
+    var link = r.avis_id ? '<a class="res-link" href="market.html?id='+encodeURIComponent(r.avis_id)+'">Voir l’avis d’origine <i data-icon="arrow-right" data-size="13"></i></a>' : '';
+    return '<div class="mk-card res-card">'
+      +'<div class="mk-card-top">'+window.sectorChip(r.secteur)+tag+(r.lot?'<span class="res-lot">Lot '+r.lot+'</span>':'')+'</div>'
+      +'<div class="mk-card-title">'+window.cleanVal(r.objet,'Résultat de marché')+'</div>'
+      +'<div class="mk-card-auth"><i data-icon="landmark" data-size="13"></i><span>'+window.cleanVal(r.autorite,'Autorité contractante')+'</span></div>'
+      +winner
+      +'<div class="mk-card-bottom">'+meta+right+'</div>'+link+'</div>';
+  }
+
+  function filtered(){
+    var l = list0.filter(function(r){
+      if(state.status==='won' && (r.infructueux || !r.attributaire)) return false;
+      if(state.status==='infr' && !r.infructueux) return false;
+      if(state.sector && r.secteur!==state.sector) return false;
+      if(state.q){ var q=state.q.toLowerCase(); if((''+(r.objet||'')+(r.attributaire||'')+(r.autorite||'')+(r.reference||'')).toLowerCase().indexOf(q)<0) return false; }
+      return true;
+    });
+    if(state.sort==='amount') l.sort(function(a,b){return (b.montant||0)-(a.montant||0);});
+    else if(state.sort==='plis') l.sort(function(a,b){return (b.nb_plis||0)-(a.nb_plis||0);});
+    return l;
+  }
+
+  function render(){
+    var l = filtered(), show = l.slice(0, LIMIT);
+    document.getElementById('count').innerHTML = '<b>'+l.length.toLocaleString('fr-FR')+'</b> résultat'+(l.length>1?'s':'');
+    document.getElementById('grid').innerHTML = l.length ? show.map(card).join('')
+      : '<div class="empty-soft"><div class="es-ico"><i data-icon="search" data-size="26"></i></div><strong>Aucun résultat</strong>Modifiez votre recherche.</div>';
+    document.getElementById('more-wrap').hidden = show.length>=l.length;
+    window.renderIcons(document.getElementById('main-content'));
+  }
+
+  document.getElementById('q').addEventListener('input',function(){state.q=this.value;LIMIT=60;render();});
+  selSec.addEventListener('change',function(){state.sector=this.value;LIMIT=60;render();});
+  document.getElementById('sort').addEventListener('change',function(){state.sort=this.value;render();});
+  document.getElementById('chips').addEventListener('click',function(e){var b=e.target.closest('.chip-btn');if(!b)return;this.querySelectorAll('.chip-btn').forEach(function(x){x.classList.remove('active');});b.classList.add('active');state.status=b.dataset.v;LIMIT=60;render();});
+  document.getElementById('btn-more').addEventListener('click',function(){LIMIT+=60;render();});
+  render();
+})();
+</script>
+<script src="assets/shell.js"></script>
+</body>
+</html>

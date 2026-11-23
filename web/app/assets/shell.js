@@ -6,16 +6,18 @@
   var NAV = [
     {href:'dashboard.html', key:'dashboard', icon:'house', label:'Accueil'},
     {href:'markets.html', key:'markets', icon:'briefcase-business', label:'Marchés publics'},
+    {href:'resultats.html', key:'resultats', icon:'trophy', label:'Résultats'},
+    {href:'entreprises.html', key:'entreprises', icon:'building2', label:'Entreprises'},
     {href:'authorities.html', key:'authorities', icon:'landmark', label:'Autorités'},
     {href:'directory.html', key:'directory', icon:'archive', label:'Bulletins officiels'},
     {href:'search.html', key:'search', icon:'search', label:'Recherche'}
   ];
-  
+
   var MOBILE = [
     {href:'dashboard.html', key:'dashboard', icon:'house', label:'Accueil'},
     {href:'markets.html', key:'markets', icon:'briefcase-business', label:'Marchés'},
-    {href:'authorities.html', key:'authorities', icon:'landmark', label:'Autorités'},
-    {href:'directory.html', key:'directory', icon:'archive', label:'Bulletins'},
+    {href:'resultats.html', key:'resultats', icon:'trophy', label:'Résultats'},
+    {href:'entreprises.html', key:'entreprises', icon:'building2', label:'Entreprises'},
     {href:'search.html', key:'search', icon:'search', label:'Recherche'}
   ];
 

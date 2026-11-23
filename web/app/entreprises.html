@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entreprises · VEILLE BF</title>
+<link rel="icon" href="assets/logo.svg">
+<link rel="stylesheet" href="assets/app.css">
+<link rel="stylesheet" href="assets/app-shell.css">
+<style>
+.ent-card{gap:12px}
+.ent-head{display:flex;align-items:center;gap:12px}
+.ent-avatar{width:44px;height:44px;border-radius:12px;background:var(--primary-light);color:var(--primary);font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ent-name{font-size:15px;font-weight:700;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ent-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:auto}
+.ent-kpi{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;text-align:center}
+.ent-kpi b{display:block;font-size:16px;font-weight:800;line-height:1.1}
+.ent-kpi span{font-size:10.5px;color:var(--muted)}
+.ent-win{color:var(--primary)}
+.ent-contacts{display:flex;flex-direction:column;gap:10px}
+.ent-contact{display:flex;gap:10px;align-items:center;font-size:13.5px}
+.ent-contact .ic{width:32px;height:32px;border-radius:9px;background:var(--primary-light);color:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ent-contact span{color:var(--muted);font-size:11px;display:block;text-transform:uppercase;letter-spacing:.3px;font-weight:700}
+</style>
+</head>
+<body>
+<div id="app" data-page="entreprises"></div>
+<main class="main" id="main-content">
+  <div id="view-list">
+    <section class="markets-hero" style="margin-bottom:16px">
+      <p class="eyebrow">Attributaires & soumissionnaires</p>
+      <h1>Entreprises</h1>
+      <p class="hero-copy">Les entreprises qui remportent les marchés publics : performances, montants et coordonnées.</p>
+    </section>
+    <section class="stat-band" id="stats"></section>
+    <div class="filterbar">
+      <div class="search-box"><i data-icon="search" data-size="18"></i><input id="q" placeholder="Rechercher une entreprise…"></div>
+      <select id="sort">
+        <option value="gagnes">Plus de marchés gagnés</option>
+        <option value="montant">Montant total remporté</option>
+        <option value="soumissions">Plus actives (soumissions)</option>
+        <option value="taux">Meilleur taux de réussite</option>
+      </select>
+    </div>
+    <div class="results-bar"><div class="rb-count" id="count">—</div></div>
+    <section class="mk-grid" id="grid"></section>
+    <div id="more-wrap" style="text-align:center;margin-top:18px" hidden><button class="button secondary-button" id="btn-more">Afficher plus</button></div>
+  </div>
+
+  <div id="view-detail" hidden></div>
+
+  <div class="app-footer"><span>Données issues des résultats provisoires de la DGCMEF.</span><span>© 2026 Veille BF</span></div>
+</main>
+
+<script src="assets/data.js"></script>
+<script src="assets/data_resultats.js"></script>
+<script src="assets/icons.js"></script>
+<script src="assets/ui.js"></script>
+<script>
+(function(){
+  var DR = window.DATA_RESULTATS || {resultats:[],entreprises:[],stats:{},ready:false};
+  var ents = DR.entreprises || [], resultats = DR.resultats || [], LIMIT = 48;
+  var state = {q:'', sort:'gagnes'};
+
+  function initials(n){ return (n||'?').split(/\s+/).filter(Boolean).slice(0,2).map(function(w){return w[0];}).join('').toUpperCase(); }
+
+  if(!ents.length){
+    document.getElementById('stats').innerHTML='';
+    document.getElementById('grid').innerHTML='<div class="empty-soft"><div class="es-ico"><i data-icon="building2" data-size="26"></i></div><strong>Entreprises en cours d’extraction</strong>Les statistiques par entreprise apparaîtront ici dès que les résultats seront traités.</div>';
+    document.querySelector('.filterbar').style.display='none';
+    document.getElementById('count').textContent='';
+    window.renderIcons(document.getElementById('main-content'));
+    return;
+  }
+
+  var s = DR.stats || {};
+  document.getElementById('stats').innerHTML = [
+    ['', 'building2', (s.nb_entreprises||ents.length).toLocaleString('fr-FR'), 'Entreprises recensées'],
+    ['blue', 'coins', window.fmtAmount(s.montant_total), 'Montant total remporté'],
+    ['amber', 'trophy', ents[0] ? ents[0].nom.slice(0,22) : '—', 'Top attributaire']
+  ].map(function(x){ return '<div class="stat-tile '+x[0]+'"><div class="st-ico"><i data-icon="'+x[1]+'" data-size="22"></i></div><div style="min-width:0"><div class="st-val" style="font-size:'+(x[1]==='trophy'?'16px':'25px')+'">'+x[2]+'</div><div class="st-lbl">'+x[3]+'</div></div></div>'; }).join('');
+
+  function card(e){
+    var sec = e.secteurs && e.secteurs.length ? window.sectorChip(e.secteurs[0]) : '';
+    return '<a class="mk-card ent-card" href="entreprises.html?nom='+encodeURIComponent(e.nom)+'">'
+      +'<div class="ent-head"><div class="ent-avatar">'+initials(e.nom)+'</div><div class="ent-name">'+e.nom+'</div></div>'
+      +(sec?'<div>'+sec+(e.groupement?' <span class="sector-chip" style="--sec:#64748b"><i data-icon="users" data-size="11"></i> Groupement</span>':'')+'</div>':'')
+      +'<div class="ent-kpis">'
+      +'<div class="ent-kpi"><b class="ent-win">'+e.gagnes+'</b><span>gagné'+(e.gagnes>1?'s':'')+'</span></div>'
+      +'<div class="ent-kpi"><b>'+e.soumissions+'</b><span>soumis.</span></div>'
+      +'<div class="ent-kpi"><b>'+e.taux_reussite+'%</b><span>réussite</span></div>'
+      +'</div>'
+      +'<div class="mk-card-bottom"><span class="deadline-pill result"><i data-icon="coins" data-size="12"></i> '+(e.montant_gagne?window.fmtAmount(e.montant_gagne):'—')+'</span><span class="sh-link">Fiche <i data-icon="arrow-right" data-size="13"></i></span></div>'
+      +'</a>';
+  }
+
+  function filtered(){
+    var l = ents.filter(function(e){ return !state.q || e.nom.toLowerCase().indexOf(state.q.toLowerCase())>-1; });
+    if(state.sort==='montant') l.sort(function(a,b){return b.montant_gagne-a.montant_gagne;});
+    else if(state.sort==='soumissions') l.sort(function(a,b){return b.soumissions-a.soumissions;});
+    else if(state.sort==='taux') l.sort(function(a,b){return b.taux_reussite-a.taux_reussite || b.gagnes-a.gagnes;});
+    else l.sort(function(a,b){return b.gagnes-a.gagnes || b.montant_gagne-a.montant_gagne;});
+    return l;
+  }
+
+  function renderList(){
+    var l = filtered(), show = l.slice(0, LIMIT);
+    document.getElementById('count').innerHTML = '<b>'+l.length.toLocaleString('fr-FR')+'</b> entreprise'+(l.length>1?'s':'');
+    document.getElementById('grid').innerHTML = l.length ? show.map(card).join('')
+      : '<div class="empty-soft"><div class="es-ico"><i data-icon="search" data-size="26"></i></div><strong>Aucune entreprise</strong>Modifiez votre recherche.</div>';
+    document.getElementById('more-wrap').hidden = show.length>=l.length;
+    window.renderIcons(document.getElementById('grid'));
+  }
+
+  function renderDetail(nom){
+    var e = ents.filter(function(x){return x.nom===nom;})[0];
+    if(!e){ location.href='entreprises.html'; return; }
+    var wins = resultats.filter(function(r){ return !r.infructueux && (r.attributaire_canon===nom || r.attributaire===nom); });
+    var contact = function(ic,label,val){ return val ? '<div class="ent-contact"><div class="ic"><i data-icon="'+ic+'" data-size="15"></i></div><div><span>'+label+'</span>'+val+'</div></div>' : ''; };
+    var contacts = [contact('badge-check','IFU',e.ifu),contact('file-text','RCCM',e.rccm),contact('phone','Téléphone',e.tel),contact('mail','Email',e.email)].join('') || '<p class="muted" style="font-size:13px">Coordonnées non renseignées dans les avis.</p>';
+    var winRows = wins.length ? wins.map(function(r){
+      return '<tr><td><strong>'+window.cleanVal(r.objet,'Marché')+'</strong><div class="muted" style="font-size:11px">'+window.cleanVal(r.autorite,'')+'</div></td>'
+        +'<td style="white-space:nowrap">'+window.cleanVal(r.date,'—')+'</td>'
+        +'<td class="amount-cell">'+(r.montant?window.fmtAmount(r.montant):'—')+'</td>'
+        +'<td>'+(r.avis_id?'<a class="button secondary-button" style="padding:4px 10px;font-size:12px" href="market.html?id='+encodeURIComponent(r.avis_id)+'">Avis</a>':'')+'</td></tr>';
+    }).join('') : '<tr><td colspan="4" class="muted" style="padding:16px">Aucun marché remporté recensé.</td></tr>';
+
+    document.getElementById('view-list').hidden = true;
+    var dv = document.getElementById('view-detail'); dv.hidden = false;
+    dv.innerHTML =
+      '<div class="breadcrumb"><a class="link" href="entreprises.html">Entreprises</a><i data-icon="chevron-right" data-size="13"></i><span>Fiche</span></div>'
+      +'<div class="panel" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:16px">'
+      +'<div class="ent-avatar" style="width:58px;height:58px;border-radius:14px;font-size:20px">'+initials(nom)+'</div>'
+      +'<div style="flex:1;min-width:240px"><h1 style="margin:0 0 6px;font-size:21px">'+nom+'</h1><div style="display:flex;gap:6px;flex-wrap:wrap">'+(e.secteurs||[]).map(window.sectorChip).join('')+(e.groupement?'<span class="sector-chip" style="--sec:#64748b"><i data-icon="users" data-size="11"></i> Groupement</span>':'')+'</div></div></div>'
+      +'<section class="stat-band" style="grid-template-columns:repeat(4,1fr)">'
+      +'<div class="stat-tile"><div class="st-ico"><i data-icon="trophy" data-size="20"></i></div><div><div class="st-val">'+e.gagnes+'</div><div class="st-lbl">Marchés gagnés</div></div></div>'
+      +'<div class="stat-tile blue"><div class="st-ico"><i data-icon="coins" data-size="20"></i></div><div><div class="st-val" style="font-size:19px">'+(e.montant_gagne?window.fmtAmount(e.montant_gagne):'—')+'</div><div class="st-lbl">Total remporté</div></div></div>'
+      +'<div class="stat-tile amber"><div class="st-ico"><i data-icon="file-text" data-size="20"></i></div><div><div class="st-val">'+e.soumissions+'</div><div class="st-lbl">Soumissions</div></div></div>'
+      +'<div class="stat-tile"><div class="st-ico"><i data-icon="gauge" data-size="20"></i></div><div><div class="st-val">'+e.taux_reussite+'%</div><div class="st-lbl">Taux de réussite</div></div></div>'
+      +'</section>'
+      +'<div class="mkt-layout" style="grid-template-columns:minmax(0,1fr) 300px;margin-top:4px">'
+      +'<div class="panel"><h2 style="font-size:15px;margin:0 0 10px"><i data-icon="trophy" data-size="15" style="color:var(--primary)"></i> Marchés remportés</h2>'
+      +'<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Objet</th><th>Date</th><th>Montant</th><th></th></tr></thead><tbody>'+winRows+'</tbody></table></div></div>'
+      +'<div class="panel"><h2 style="font-size:15px;margin:0 0 12px"><i data-icon="phone" data-size="15" style="color:var(--primary)"></i> Coordonnées</h2><div class="ent-contacts">'+contacts+'</div></div>'
+      +'</div>';
+    window.renderIcons(dv);
+  }
+
+  var nom = (location.search.match(/nom=([^&]+)/)||[])[1];
+  if(nom){ renderDetail(decodeURIComponent(nom.replace(/\+/g,' '))); }
+  else {
+    document.getElementById('q').addEventListener('input',function(){state.q=this.value;LIMIT=48;renderList();});
+    document.getElementById('sort').addEventListener('change',function(){state.sort=this.value;renderList();});
+    document.getElementById('btn-more').addEventListener('click',function(){LIMIT+=48;renderList();});
+    renderList();
+  }
+})();
+</script>
+<script src="assets/shell.js"></script>
+</body>
+</html>
