@@ -234,55 +234,18 @@ def process_pdf(pdf_path: str, numero: str = None):
     zones = split_sections(pdf_path)
     avis_zone, resultats_zone = zones["AVIS"], zones["RESULTATS"]
 
-    # ---- AVIS : garde-fou FORMAT -> extraction (consensus 3 modèles, sinon
-    #      regex) -> JUGE. L'extraction par consensus remplace le regex dès qu'une
-    #      API est configurée ; sinon le regex sert de repli déterministe.
+    # ---- AVIS : Traitement direct et déterministe (Parties 4, 5, 6 supprimées)
+    #      Plus de consensus 3 LLM (4), plus de révision Couche 4 (5), plus de juge AVIS (6).
+    #      Les métadonnées géométriques et bandeaux couleur sont directement exploitées.
     avis_out = []
-    feedback_hint = feedback_store.build_hint("AVIS") if use_api else ""
 
     def _finalize_avis(rec, text, fmt_info):
-        enrich_coverage(rec)
-        if use_api:
-            # Extraction par CONSENSUS (2 extracteurs + 1 arbitre).
-            ex = consensus_extract(text, "AVIS")
-            if ex is not None:
-                rec["_consensus"] = ex.pop("_consensus", None)
-                for k, v in ex.items():
-                    if not k.startswith("_"):
-                        rec[k] = v
-                enrich_coverage(rec)
-                # Rétroaction : les causes TYPÉES de divergence nourrissent les
-                # prompts suivants (le juge comprend pourquoi les modèles diffèrent).
-                cons = rec.get("_consensus") or {}
-                feedback_store.record(cons.get("raisons_divergence", []),
-                                      numero, "AVIS")
-            else:  # providers indisponibles -> repli Couche 4 (décision + révision)
-                refined, dec = refine_if_needed(rec, text, "AVIS")
-                rec = refined if refined else rec
-                rec["_decision"] = {"needs_llm": dec["needs_llm"],
-                                    "champs_a_reprendre": dec["champs_a_reprendre"]}
-            sc = rec.get("_score_exactitude")
-            if sc is not None and sc < 100:
-                feedback_store.record(rec.get("_raisons_ecart", []), numero, "AVIS", score=sc)
-        else:
-            rec["_decision"] = {"needs_llm": decide(rec, text)["needs_llm"]}
+        # Report direct des métadonnées issues de la segmentation par bandeaux
+        rec["autorite_emettrice"] = rec.get("autorite_emettrice") or rec.get("_emetteur_bandeau")
+        rec["objet"] = rec.get("objet") or rec.get("_objet_bandeau")
+        rec["categorie"] = rec.get("categorie") or rec.get("_categorie")
+        rec["macro_section"] = rec.get("macro_section") or rec.get("_macro_section")
         rec["_format"] = fmt_info
-        rec["_judge"] = judge.judge_avis(rec, text)
-        # Triplet incomplet (titre cyan sans émetteur jaune et/ou catégorie rouge
-        # au-dessus) : on n'est pas sûr du début d'annonce -> revue humaine.
-        if rec.get("_triplet_complet") is False:
-            rec["_judge"]["revue_humaine"] = True
-            rec["_judge"].setdefault("anomalies", []).append(
-                {"nom": "triplet", "statut": "warn",
-                 "detail": "contexte manquant : " + ", ".join(rec.get("_contexte_manquant") or [])})
-        if rec.get("_ocr_tente"):  # texte corrompu passé par l'OCR -> revue humaine
-            rec["_judge"]["revue_humaine"] = True
-            rec["_judge"].setdefault("anomalies", []).append(
-                {"nom": "ocr", "statut": "warn",
-                 "detail": "texte corrompu ré-océrisé" if rec.get("_ocr_applique")
-                           else "texte corrompu, OCR indisponible"})
-        # flat_text est conservé ici : le scoreur Span (optionnel) en a besoin ;
-        # il sera retiré en fin de traitement (allègement de la sortie).
         return rec
 
     nb_bloque = nb_divise = 0
@@ -359,9 +322,9 @@ def process_pdf(pdf_path: str, numero: str = None):
         a.pop("flat_text", None)
 
     # Synthèse qualité pour le meta (file de revue humaine).
-    confs = [a["_judge"]["confiance"] for a in avis_out]
-    revue = sum(1 for a in avis_out if a["_judge"]["revue_humaine"]) + \
-        sum(1 for r in resultats_out if r["_judge"]["revue_humaine"])
+    confs = [a["_judge"]["confiance"] for a in avis_out if "_judge" in a]
+    revue = sum(1 for a in avis_out if a.get("_judge", {}).get("revue_humaine")) + \
+        sum(1 for r in resultats_out if r.get("_judge", {}).get("revue_humaine"))
 
     # ---- Stockage -------------------------------------------------------
     payload = {

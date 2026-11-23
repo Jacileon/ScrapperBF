@@ -55,6 +55,9 @@ AVIS:
   categorie:
     type: string
     description: "Fournitures et services courants / Travaux / Prestations intellectuelles"
+  secteur_activite:
+    type: string
+    description: "Secteur métier : BTP, Génie Civil & Construction / Santé, Médical & Pharmacie / Informatique & Télécoms / Eau, Forages & Assainissement / Véhicules, Transports & Hydrocarbures / Énergie & Électricité / Mobilier & Fournitures de Bureau / Services Généraux & Divers / etc."
   objet:
     type: string
     description: "Description précise du besoin"

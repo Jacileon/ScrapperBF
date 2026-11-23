@@ -132,11 +132,23 @@ def provider_specs() -> list:
 
     ock = _keys("OPENAI_COMPAT")
     ocb = os.environ.get("OPENAI_COMPAT_BASE_URL", "").strip()
-    if ocb:  # une base_url suffit (certains serveurs locaux n'exigent pas de clé)
-        keys = ock or ["sk-local"]
-        specs.append({"name": "openai-compat", "kind": "openai_compat",
-                      "key": keys[0], "keys": keys, "base_url": ocb,
-                      "model": os.environ.get("OPENAI_COMPAT_MODEL", "gpt-4o-mini")})
+    if ocb:  # support mono ou multi-modèles compatibles OpenAI (ex: Kamente, Ollama, etc.)
+        compat_models = _split_models(
+            os.environ.get("OPENAI_COMPAT_MODELS", ""),
+            os.environ.get("OPENAI_COMPAT_MODEL", "gpt-4o-mini")
+        )
+        prefix = "kamente" if "kamente" in ocb.lower() else "openai-compat"
+        for m in compat_models:
+            keys = keys_for_model(m, ock, mk) or (ock if ock else ["sk-local"])
+            specs.append({
+                "name": f"{prefix}:{m}",
+                "kind": "openai_compat",
+                "key": keys[0],
+                "keys": keys,
+                "base_url": ocb,
+                "model": m,
+                "api_key": keys[0]
+            })
 
     return specs
 

@@ -50,8 +50,9 @@ def test_process_pdf_deterministic(tmp_path, monkeypatch):
 
     a = payload["AVIS"][0]
     assert "flat_text" not in a                          # allégé
-    assert a["_score_exactitude"] == 100                 # tous les champs clés présents
-    assert "_decision" in a
+    assert a["autorite_emettrice"] == "MINISTERE X"
+    assert a["objet"] == "Acquisition de PC"
+    assert a["categorie"] == "Fournitures et Services courants"
 
     r = payload["RESULTATS"][0]
     assert r["autorite_contractante"] == "MINISTERE Y"

@@ -38,12 +38,12 @@ def main(argv):
         name = prov["name"]
         try:
             res = prov["fn"](PING_PROMPT, PING_SCHEMA, "Tu réponds en JSON strict.", False)
-            print(f"  ✅ {name} — réponse reçue ({str(res)[:60]})")
+            print(f"  [OK] {name} - reponse recue ({str(res)[:60]})")
             ok_any = True
         except ProviderError as e:
-            print(f"  ❌ {name} — {e}")
+            print(f"  [ERREUR] {name} - {str(e)[:120]}")
         except Exception as e:  # réseau, timeout, JSON…
-            print(f"  ⚠️  {name} — {type(e).__name__}: {str(e)[:80]}")
+            print(f"  [WARN] {name} - {type(e).__name__}: {str(e)[:120]}")
     return 0 if ok_any else 2
 
 
