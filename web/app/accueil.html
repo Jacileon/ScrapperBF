@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Veille BF · Les marchés publics du Burkina Faso, simplement</title>
+<meta name="description" content="Veille BF réunit tous les appels d'offres et résultats d'attribution des marchés publics du Burkina Faso. Recherche, alertes, export et répertoire des entreprises.">
+<link rel="icon" href="assets/logo.svg">
+<link rel="stylesheet" href="assets/app.css">
+<link rel="stylesheet" href="assets/app-shell.css">
+<link rel="stylesheet" href="assets/saas.css">
+</head>
+<body>
+<header class="pub-topbar">
+  <a class="brand" href="accueil.html"><img src="assets/logo.svg" alt=""><span>VEILLE BF<small>Marchés publics · Burkina Faso</small></span></a>
+  <nav>
+    <a class="button ghost" href="offres">Offres</a>
+    <a class="button ghost" href="dashboard.html">Explorer</a>
+    <a class="button ghost" href="connexion" data-auth-only>Se connecter</a>
+    <a class="button" href="inscription" data-auth-only>Créer un compte</a>
+    <a class="button" href="compte" data-user-only hidden>Mon compte</a>
+  </nav>
+</header>
+
+<!-- HERO -->
+<section class="lp-hero">
+  <span class="eyebrow"><i data-icon="sparkles" data-size="14"></i> La veille des marchés publics, enfin simple</span>
+  <h1>Tous les marchés publics du Burkina Faso, au même endroit</h1>
+  <p class="lead">Appels d'offres, demandes de prix et résultats d'attribution de la DGCMEF — triés par secteur, cherchables en un clin d'œil, et prêts à exploiter. Ne ratez plus jamais une opportunité.</p>
+  <div class="cta">
+    <a class="button lg" href="inscription">Commencer gratuitement</a>
+    <a class="button ghost lg" href="offres">Voir les offres</a>
+  </div>
+  <div class="lp-trust" id="trust">
+    <div class="t"><b id="t-marches">—</b><span>Marchés suivis</span></div>
+    <div class="t"><b id="t-secteurs">—</b><span>Secteurs d'activité</span></div>
+    <div class="t"><b id="t-budget">—</b><span>Volume cumulé</span></div>
+  </div>
+</section>
+
+<!-- FONCTIONNALITÉS -->
+<section class="lp-section">
+  <h2>Ce que vous pouvez faire avec Veille BF</h2>
+  <p class="sec-sub">De la recherche quotidienne au suivi fin de la concurrence, chaque offre débloque un cran de plus.</p>
+  <div class="feat-grid">
+    <div class="feat-card"><div class="fc-ico"><i data-icon="search" data-size="22"></i></div>
+      <h3>Recherche intelligente</h3><p>Filtrez par secteur, autorité, montant ou échéance. Trouvez les marchés faits pour vous en quelques secondes.</p>
+      <span class="fc-plan">Dès l'offre Gratuite</span></div>
+    <div class="feat-card"><div class="fc-ico"><i data-icon="bell" data-size="22"></i></div>
+      <h3>Alertes personnalisées</h3><p>Recevez par email et WhatsApp les nouveaux marchés qui correspondent à vos critères. Soyez le premier informé.</p>
+      <span class="fc-plan">Offre Pro</span></div>
+    <div class="feat-card"><div class="fc-ico"><i data-icon="trophy" data-size="22"></i></div>
+      <h3>Résultats d'attribution</h3><p>Qui a gagné, à quel montant, face à combien de concurrents. Analysez les décisions pour mieux vous positionner.</p>
+      <span class="fc-plan">Offre Pro</span></div>
+    <div class="feat-card"><div class="fc-ico"><i data-icon="building2" data-size="22"></i></div>
+      <h3>Répertoire des entreprises</h3><p>Le profil des soumissionnaires : marchés remportés, IFU, RCCM, contacts. Connaissez vos concurrents et partenaires.</p>
+      <span class="fc-plan">Offre Pro</span></div>
+    <div class="feat-card"><div class="fc-ico"><i data-icon="download" data-size="22"></i></div>
+      <h3>Export CSV / Excel</h3><p>Sortez vos listes de marchés et de résultats pour les travailler dans vos propres outils, sans ressaisie.</p>
+      <span class="fc-plan">Offre Pro</span></div>
+    <div class="feat-card"><div class="fc-ico"><i data-icon="code" data-size="22"></i></div>
+      <h3>API & multi-utilisateurs</h3><p>Intégrez les données à vos applications via l'API, et donnez accès à toute votre équipe.</p>
+      <span class="fc-plan">Offre Entreprise</span></div>
+  </div>
+</section>
+
+<!-- COMMENT ÇA MARCHE -->
+<section class="lp-section" style="padding-top:0">
+  <h2>Comment ça marche</h2>
+  <p class="sec-sub">Trois étapes pour transformer les bulletins officiels en opportunités concrètes.</p>
+  <div class="steps">
+    <div class="step"><div class="num">1</div><h3>Créez votre compte</h3><p>Inscription gratuite en une minute, sans carte bancaire. Explorez immédiatement les marchés en cours.</p></div>
+    <div class="step"><div class="num">2</div><h3>Ciblez vos marchés</h3><p>Choisissez vos secteurs et vos critères. Passez à Pro pour les alertes et les résultats d'attribution.</p></div>
+    <div class="step"><div class="num">3</div><h3>Gagnez du temps</h3><p>Soyez alerté, analysez la concurrence, exportez vos listes et concentrez-vous sur vos réponses.</p></div>
+  </div>
+</section>
+
+<!-- OFFRES + COMPARATIF -->
+<section class="lp-section" id="offres" style="padding-top:0">
+  <h2>Des offres qui grandissent avec vous</h2>
+  <p class="sec-sub">Commencez gratuitement, puis débloquez progressivement alertes, résultats, exports, API et comptes d'équipe.</p>
+  <div class="plans-grid" id="plans" style="margin-top:0"><p class="muted" style="grid-column:1/-1;text-align:center">Chargement des offres…</p></div>
+  <div class="compare" id="compare"></div>
+  <p style="text-align:center;margin-top:24px"><a class="button" href="offres">Comparer en détail & s'abonner</a></p>
+</section>
+
+<!-- CTA FINALE -->
+<section class="lp-cta-band">
+  <h2>Prêt à ne plus rater un marché ?</h2>
+  <p>Rejoignez les entreprises qui suivent les marchés publics du Burkina Faso avec Veille BF.</p>
+  <a class="button lg" href="inscription">Créer mon compte gratuit</a>
+</section>
+
+<div class="app-footer" style="max-width:1080px;margin:0 auto 40px;padding:0 20px">
+  <span>Données publiques issues des bulletins officiels de la DGCMEF (Burkina Faso).</span>
+  <span>© 2026 Veille BF</span>
+</div>
+
+<script src="assets/icons.js"></script>
+<script src="assets/session.js"></script>
+<script>
+(function(){
+  // --- Comparatif gradué ---
+  var ROWS = [
+    {grp:'Veille & recherche'},
+    {label:'Recherche des marchés', type:'feature', key:'recherche'},
+    {label:'Fiches marché détaillées', type:'feature', key:'fiches'},
+    {label:'Recherches par jour', type:'limite', key:'recherches_jour'},
+    {label:'Historique consultable', type:'limite', key:'historique'},
+    {grp:'Fonctionnalités avancées'},
+    {label:"Résultats & attributaires", type:'feature', key:'resultats'},
+    {label:'Répertoire des entreprises', type:'feature', key:'entreprises'},
+    {label:'Alertes email & WhatsApp', type:'feature', key:'alertes'},
+    {label:'Export CSV / Excel', type:'feature', key:'export'},
+    {grp:'Entreprise & intégration'},
+    {label:'Accès API + clés', type:'feature', key:'api'},
+    {label:'Comptes multi-utilisateurs', type:'feature', key:'equipe'},
+    {label:'Utilisateurs inclus', type:'limite', key:'utilisateurs'},
+    {grp:'Accompagnement'},
+    {label:'Support', type:'support', key:'support'}
+  ];
+
+  function cell(plan, row){
+    if(row.type==='feature'){
+      var on = plan.features[row.key];
+      return on ? '<td class="yes"><i data-icon="check" data-size="16"></i></td>'
+                : '<td class="no"><i data-icon="x" data-size="15"></i></td>';
+    }
+    if(row.type==='limite') return '<td>'+((plan.limites||{})[row.key]||'—')+'</td>';
+    if(row.type==='support') return '<td>'+(plan.support||'—')+'</td>';
+    return '<td>—</td>';
+  }
+
+  function renderCompare(plans){
+    var head = '<tr><th>Fonctionnalité</th>'+plans.map(function(p){
+      return '<th class="'+(p.id==='pro'?'hot':'')+'">'+p.nom+'</th>'; }).join('')+'</tr>';
+    var body = ROWS.map(function(r){
+      if(r.grp) return '<tr class="grp"><td colspan="'+(plans.length+1)+'">'+r.grp+'</td></tr>';
+      return '<tr><td>'+r.label+'</td>'+plans.map(function(p){ return cell(p,r); }).join('')+'</tr>';
+    }).join('');
+    document.getElementById('compare').innerHTML = '<table><thead>'+head+'</thead><tbody>'+body+'</tbody></table>';
+    window.renderIcons(document.getElementById('compare'));
+  }
+
+  function priceLine(p){
+    if(!p.prix_mensuel_fcfa) return '<div class="plan-price"><span class="free">Gratuit</span></div><div class="plan-year">Pour toujours</div>';
+    return '<div class="plan-price"><span class="amount">'+p.prix_mensuel_fcfa.toLocaleString('fr-FR')+'</span><span class="per">FCFA /mois</span></div>'
+      +'<div class="plan-year">'+p.prix_annuel_fcfa.toLocaleString('fr-FR')+' FCFA/an</div>';
+  }
+  function renderPlans(plans){
+    document.getElementById('plans').innerHTML = plans.map(function(p){
+      var feat = p.id==='pro';
+      var cta = p.id==='gratuit'
+        ? '<a class="button ghost" href="inscription">Commencer gratuitement</a>'
+        : '<a class="button" href="inscription?next='+encodeURIComponent('checkout.html?plan='+p.id)+'">Choisir '+p.nom+'</a>';
+      return '<div class="plan-card'+(feat?' featured':'')+'">'
+        +(feat?'<span class="tag">Le plus choisi</span>':'')
+        +'<h3>'+p.nom+'</h3><p class="desc">'+p.sous_titre+'</p>'
+        +priceLine(p)+cta
+        +'<ul class="plan-feats">'+p.mise_en_avant.map(function(m){
+            return '<li><i data-icon="check" data-size="16" class="feat-on"></i>'+m+'</li>'; }).join('')
+        +'</ul></div>';
+    }).join('');
+    window.renderIcons(document.getElementById('plans'));
+  }
+
+  // --- Chargement ---
+  window.VBF.api('/api/stats').then(function(s){
+    document.getElementById('t-marches').textContent=(s.total_annonces||0).toLocaleString('fr-FR');
+    document.getElementById('t-secteurs').textContent=(s.sectors?s.sectors.length:13);
+    document.getElementById('t-budget').textContent=s.budget_formate||'—';
+  }).catch(function(){});
+
+  window.VBF.api('/api/billing/plans').then(function(d){ renderPlans(d.plans); renderCompare(d.plans); })
+    .catch(function(){ document.getElementById('plans').innerHTML='<p class="muted" style="grid-column:1/-1;text-align:center">Impossible de charger les offres.</p>'; });
+
+  window.VBF.me().then(function(u){
+    document.querySelectorAll('[data-auth-only]').forEach(function(x){ x.hidden=!!u; });
+    document.querySelectorAll('[data-user-only]').forEach(function(x){ x.hidden=!u; });
+  });
+
+  window.renderIcons && window.renderIcons();
+})();
+</script>
+</body>
+</html>

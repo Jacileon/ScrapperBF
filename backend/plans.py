@@ -45,6 +45,13 @@ PLANS: dict[str, dict] = {
             "recherches_par_jour": 15,
             "fiches_par_jour": 10,
         },
+        "support": "Communauté",
+        "limites": {
+            "utilisateurs": "1",
+            "historique": "30 derniers jours",
+            "recherches_jour": "15 / jour",
+            "fiches_jour": "10 / jour",
+        },
         "mise_en_avant": [
             "Recherche de base dans les marchés",
             "Jusqu'à 10 fiches détaillées par jour",
@@ -71,6 +78,13 @@ PLANS: dict[str, dict] = {
         "quotas": {
             "recherches_par_jour": -1,
             "fiches_par_jour": -1,
+        },
+        "support": "Email sous 48 h",
+        "limites": {
+            "utilisateurs": "1",
+            "historique": "Complet",
+            "recherches_jour": "Illimité",
+            "fiches_jour": "Illimité",
         },
         "mise_en_avant": [
             "Recherche et fiches illimitées",
@@ -100,6 +114,13 @@ PLANS: dict[str, dict] = {
         "quotas": {
             "recherches_par_jour": -1,
             "fiches_par_jour": -1,
+        },
+        "support": "Prioritaire",
+        "limites": {
+            "utilisateurs": "Jusqu'à 5",
+            "historique": "Complet",
+            "recherches_jour": "Illimité",
+            "fiches_jour": "Illimité",
         },
         "mise_en_avant": [
             "Tout l'offre Pro",
@@ -153,6 +174,8 @@ def public_plans() -> list[dict]:
             "prix_annuel_fcfa": p["prix_annuel_fcfa"],
             "features": p["features"],
             "quotas": p["quotas"],
+            "support": p.get("support", ""),
+            "limites": p.get("limites", {}),
             "mise_en_avant": p["mise_en_avant"],
         })
     return out

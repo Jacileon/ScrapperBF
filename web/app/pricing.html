@@ -32,6 +32,12 @@
 
 <section class="plans-grid" id="plans"><p class="muted" style="text-align:center;grid-column:1/-1">Chargement des offres…</p></section>
 
+<section class="lp-section" style="padding-top:10px">
+  <h2>Comparatif détaillé</h2>
+  <p class="sec-sub">Chaque offre débloque un cran supplémentaire.</p>
+  <div class="compare" id="compare"></div>
+</section>
+
 <div class="app-footer" style="max-width:1040px;margin:10px auto 40px;padding:0 20px">
   <span>Données publiques issues des bulletins officiels de la DGCMEF (Burkina Faso).</span>
   <span>© 2026 Veille BF</span>
@@ -89,8 +95,46 @@
     }).join('');
   }
 
+  var CMP_ROWS = [
+    {grp:'Veille & recherche'},
+    {label:'Recherche des marchés', type:'feature', key:'recherche'},
+    {label:'Fiches marché détaillées', type:'feature', key:'fiches'},
+    {label:'Recherches par jour', type:'limite', key:'recherches_jour'},
+    {label:'Historique consultable', type:'limite', key:'historique'},
+    {grp:'Fonctionnalités avancées'},
+    {label:"Résultats & attributaires", type:'feature', key:'resultats'},
+    {label:'Répertoire des entreprises', type:'feature', key:'entreprises'},
+    {label:'Alertes email & WhatsApp', type:'feature', key:'alertes'},
+    {label:'Export CSV / Excel', type:'feature', key:'export'},
+    {grp:'Entreprise & intégration'},
+    {label:'Accès API + clés', type:'feature', key:'api'},
+    {label:'Comptes multi-utilisateurs', type:'feature', key:'equipe'},
+    {label:'Utilisateurs inclus', type:'limite', key:'utilisateurs'},
+    {grp:'Accompagnement'},
+    {label:'Support', type:'support', key:'support'}
+  ];
+  function cmpCell(p,r){
+    if(r.type==='feature') return p.features[r.key]
+      ? '<td class="yes"><i data-icon="check" data-size="16"></i></td>'
+      : '<td class="no"><i data-icon="x" data-size="15"></i></td>';
+    if(r.type==='limite') return '<td>'+((p.limites||{})[r.key]||'—')+'</td>';
+    if(r.type==='support') return '<td>'+(p.support||'—')+'</td>';
+    return '<td>—</td>';
+  }
+  function renderCompare(){
+    var cmp=document.getElementById('compare'); if(!cmp) return;
+    var head='<tr><th>Fonctionnalité</th>'+state.plans.map(function(p){ return '<th class="'+(p.id==='pro'?'hot':'')+'">'+p.nom+'</th>'; }).join('')+'</tr>';
+    var body=CMP_ROWS.map(function(r){
+      if(r.grp) return '<tr class="grp"><td colspan="'+(state.plans.length+1)+'">'+r.grp+'</td></tr>';
+      return '<tr><td>'+r.label+'</td>'+state.plans.map(function(p){ return cmpCell(p,r); }).join('')+'</tr>';
+    }).join('');
+    cmp.innerHTML='<table><thead>'+head+'</thead><tbody>'+body+'</tbody></table>';
+    window.renderIcons(cmp);
+  }
+
   function render(){
     var grid = document.getElementById('plans');
+    renderCompare();
     grid.innerHTML = state.plans.map(function(p){
       var featured = p.id==='pro';
       return '<div class="plan-card'+(featured?' featured':'')+'">'

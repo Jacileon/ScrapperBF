@@ -65,8 +65,38 @@ LEGACY_REDIRECTS = {
 }
 
 
+# Routes propres (URLs lisibles en français) -> page HTML servie, URL conservée.
+FRIENDLY_ROUTES = {
+    "accueil": "accueil",
+    "offres": "pricing",
+    "tarifs": "pricing",
+    "connexion": "login",
+    "inscription": "register",
+    "mot-de-passe-oublie": "forgot-password",
+    "compte": "account",
+    "paiement": "checkout",
+    "tableau-de-bord": "dashboard",
+    "marches": "markets",
+    "resultats": "resultats",
+    "entreprises": "entreprises",
+    "autorites": "authorities",
+    "bulletins": "directory",
+    "recherche": "search",
+}
+
+
+def _serve_page(page: str):
+    file_path = WEB_DIR / f"{page}.html"
+    if file_path.exists():
+        return FileResponse(file_path)
+    raise HTTPException(status_code=404, detail="Page introuvable")
+
+
 @app.get("/")
 def index():
+    # Page d'accueil publique explicative (repli : dashboard si absente).
+    if (WEB_DIR / "accueil.html").exists():
+        return _serve_page("accueil")
     return RedirectResponse(url="/dashboard.html")
 
 
@@ -74,9 +104,14 @@ def index():
 def serve_html(page: str):
     if page in LEGACY_REDIRECTS:
         return RedirectResponse(url=LEGACY_REDIRECTS[page])
-    file_path = WEB_DIR / f"{page}.html"
-    if file_path.exists():
-        return FileResponse(file_path)
+    return _serve_page(page)
+
+
+@app.get("/{slug}")
+def serve_friendly(slug: str):
+    # Alias d'URL propres -> fichier HTML (sert sans changer l'URL).
+    if slug in FRIENDLY_ROUTES:
+        return _serve_page(FRIENDLY_ROUTES[slug])
     raise HTTPException(status_code=404, detail="Page introuvable")
 
 
