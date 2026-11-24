@@ -6,8 +6,8 @@
   var NAV = [
     {href:'dashboard.html', key:'dashboard', icon:'house', label:'Accueil'},
     {href:'markets.html', key:'markets', icon:'briefcase-business', label:'Marchés publics'},
-    {href:'resultats.html', key:'resultats', icon:'trophy', label:'Résultats'},
-    {href:'entreprises.html', key:'entreprises', icon:'building2', label:'Entreprises'},
+    {href:'resultats.html', key:'resultats', icon:'trophy', label:'Résultats', feature:'resultats'},
+    {href:'entreprises.html', key:'entreprises', icon:'building2', label:'Entreprises', feature:'entreprises'},
     {href:'authorities.html', key:'authorities', icon:'landmark', label:'Autorités'},
     {href:'directory.html', key:'directory', icon:'archive', label:'Bulletins officiels'},
     {href:'search.html', key:'search', icon:'search', label:'Recherche'}
@@ -49,7 +49,7 @@
     +'<button class="kbar-trigger" type="button" id="kbar-open"><i data-icon="search" data-size="16"></i> Rechercher un marché, une autorité… <kbd>Ctrl K</kbd></button>'
     +'</div>'
     +'<button class="icon-btn" id="theme-toggle" title="Changer de thème" type="button"><i data-icon="moon" data-size="19"></i></button>'
-    +'<div class="user-menu"><div class="user-avatar">'+(D.user ? D.user.initials : 'BF')+'</div><div class="user-info"><strong>'+(D.user ? D.user.name : 'DGCMEF')+'</strong><span>'+(D.user ? D.user.role : 'Veille Officielle')+'</span></div></div>'
+    +'<div id="user-slot"></div>'
     +'</header>'
   );
 
@@ -136,4 +136,93 @@
   });
 
   window.renderIcons();
+
+  // ---- Session : utilisateur réel, offre, déconnexion, verrouillage ----
+  var FEAT_PLAN = {}; // features du plan courant
+
+  function initials(name){
+    name = (name||'').trim();
+    if(!name) return 'VB';
+    var parts = name.split(/\s+/);
+    return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+  }
+
+  function renderAnon(){
+    var slot = document.getElementById('user-slot');
+    if(!slot) return;
+    slot.className = 'topbar-auth';
+    slot.innerHTML = '<a class="button ghost" href="login.html" style="min-height:36px;padding:7px 14px">Se connecter</a>'
+      + '<a class="button" href="register.html" style="min-height:36px;padding:7px 14px">Créer un compte</a>';
+    window.renderIcons(slot);
+  }
+
+  function renderUser(u){
+    var slot = document.getElementById('user-slot');
+    if(!slot) return;
+    var plan = (u.plan && u.plan.id) || u.plan_id || 'gratuit';
+    var planNom = (u.plan && u.plan.nom) || plan;
+    var name = u.nom || u.email || 'Mon compte';
+    slot.className = 'user-menu';
+    slot.innerHTML =
+      '<div class="user-avatar">'+initials(u.nom||u.email)+'</div>'
+      +'<div class="user-info"><strong>'+name+'</strong><span class="plan-badge '+plan+'">'+planNom+'</span></div>'
+      +'<div class="user-dropdown" id="user-dd">'
+      +'<div class="dd-head"><strong>'+name+'</strong><span>'+(u.email||'')+'</span></div>'
+      +'<a href="account.html"><i data-icon="user" data-size="16"></i> Mon compte</a>'
+      +(plan==='gratuit' ? '<a href="pricing.html"><i data-icon="sparkles" data-size="16"></i> Passer à Pro</a>' : '')
+      +'<button type="button" id="logout-btn"><i data-icon="log-out" data-size="16"></i> Déconnexion</button>'
+      +'</div>';
+    window.renderIcons(slot);
+    var dd = slot.querySelector('#user-dd');
+    slot.addEventListener('click', function(e){ if(e.target.closest('#logout-btn')) return; dd.classList.toggle('open'); });
+    document.addEventListener('click', function(e){ if(!slot.contains(e.target)) dd.classList.remove('open'); });
+    var lo = slot.querySelector('#logout-btn');
+    if(lo) lo.addEventListener('click', function(){
+      fetch('/api/auth/logout', {method:'POST', credentials:'include'}).then(function(){ location.href='login.html'; });
+    });
+  }
+
+  function markLocks(entitled){
+    sidebar.querySelectorAll('.nav-link').forEach(function(a){
+      var item = NAV.filter(function(n){ return a.getAttribute('href')===n.href; })[0];
+      if(item && item.feature && !entitled(item.feature)){
+        if(!a.querySelector('.nav-lock')){
+          var i=document.createElement('i'); i.setAttribute('data-icon','lock'); i.setAttribute('data-size','14'); i.className='nav-lock';
+          a.appendChild(i); window.renderIcons(a);
+        }
+      }
+    });
+  }
+
+  function gateOverlay(connected, feature){
+    var card = connected
+      ? '<h2>Passez à une offre supérieure</h2><p>Cette section est incluse dans les offres Pro et Entreprise.</p>'
+        +'<div class="vbf-gate-actions"><a class="button" href="pricing.html">Voir les offres</a><a class="button ghost" href="dashboard.html">Retour</a></div>'
+      : '<h2>Connectez-vous pour continuer</h2><p>Cette section est réservée aux membres. Connectez-vous ou créez un compte gratuit.</p>'
+        +'<div class="vbf-gate-actions"><a class="button" href="login.html">Se connecter</a><a class="button ghost" href="register.html">Créer un compte</a></div>';
+    var el=document.createElement('div'); el.className='vbf-gate-overlay';
+    el.innerHTML='<div class="vbf-gate-card"><div class="vbf-gate-ico"><i data-icon="lock" data-size="28"></i></div>'+card+'</div>';
+    document.body.appendChild(el); window.renderIcons(el);
+  }
+
+  var appEl = document.getElementById('app');
+  var requires = appEl && appEl.dataset ? appEl.dataset.requires : '';
+
+  fetch('/api/auth/me', {credentials:'include'})
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){
+      var u = d && d.user;
+      if(u){
+        FEAT_PLAN = (u.plan && u.plan.features) || {};
+        renderUser(u);
+        var entitled = function(f){ return !!FEAT_PLAN[f]; };
+        markLocks(entitled);
+        if(requires && !entitled(requires)) gateOverlay(true, requires);
+      } else {
+        renderAnon();
+        markLocks(function(){ return false; });
+        if(requires) gateOverlay(false, requires);
+      }
+    })
+    .catch(function(){ renderAnon(); });
 })();

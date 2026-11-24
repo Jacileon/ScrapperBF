@@ -1,0 +1,122 @@
+/* saas.css — styles du SaaS Veille BF : auth, offres/tarifs, verrouillage,
+   badge d'offre, checkout, compte. Réutilise les variables de app.css. */
+
+/* --- Utilitaires manquants --- */
+.button.ghost{background:#fff;color:var(--primary);border:1px solid var(--line)}
+.button.ghost:hover{background:var(--primary-light)}
+.button.lg{min-height:48px;padding:12px 22px;font-size:15px}
+.spin{display:inline-block;width:15px;height:15px;border:2px solid #ffffff66;border-top-color:#fff;border-radius:50%;animation:vbf-spin .7s linear infinite;vertical-align:-2px}
+@keyframes vbf-spin{to{transform:rotate(360deg)}}
+
+.alert{border-radius:8px;padding:10px 13px;font-size:13px;margin-bottom:14px}
+.alert.error{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
+.alert.success{background:var(--primary-light);color:var(--primary-dark);border:1px solid #bbf7d0}
+:root[data-theme="dark"] .alert.error{background:#2a1416;color:#fca5a5;border-color:#7f1d1d}
+
+/* --- Layout d'authentification (pages sans shell) --- */
+.auth-shell{min-height:100vh;display:grid;grid-template-columns:1fr 1fr;background:var(--bg)}
+.auth-aside{background:linear-gradient(160deg,var(--primary-dark),var(--primary));color:#fff;padding:48px 44px;display:flex;flex-direction:column;justify-content:space-between}
+.auth-aside .brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:18px}
+.auth-aside .brand img{width:40px;height:40px}
+.auth-aside h2{font-size:30px;line-height:1.2;margin:0 0 14px}
+.auth-aside p{color:#ffffffcc;font-size:15px;line-height:1.6;margin:0}
+.auth-aside ul{list-style:none;padding:0;margin:22px 0 0;display:grid;gap:12px}
+.auth-aside li{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:#ffffffe6}
+.auth-aside li i{flex-shrink:0;margin-top:2px;color:#86efac}
+.auth-aside .foot{font-size:12px;color:#ffffff99}
+.auth-main{display:flex;align-items:center;justify-content:center;padding:40px 24px}
+.auth-card{width:100%;max-width:400px}
+.auth-card h1{font-size:24px;margin:0 0 6px}
+.auth-card .sub{color:var(--muted);margin:0 0 22px;font-size:14px}
+.auth-form{display:grid;gap:15px}
+.auth-form .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.auth-switch{margin-top:18px;text-align:center;font-size:13.5px;color:var(--muted)}
+@media (max-width:860px){.auth-shell{grid-template-columns:1fr}.auth-aside{display:none}}
+
+/* --- Barre publique (pages hors shell : pricing, auth) --- */
+.pub-topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;z-index:20}
+.pub-topbar .brand{display:flex;align-items:center;gap:10px;font-weight:800;color:var(--ink);text-decoration:none}
+.pub-topbar .brand img{width:34px;height:34px}
+.pub-topbar .brand small{display:block;font-weight:600;font-size:10px;color:var(--muted)}
+.pub-topbar nav{display:flex;align-items:center;gap:10px}
+
+/* --- Page Offres / Tarifs --- */
+.pricing-hero{text-align:center;padding:52px 20px 10px;max-width:760px;margin:0 auto}
+.pricing-hero .eyebrow{display:inline-flex;gap:6px;align-items:center;color:var(--primary);background:var(--primary-light);font-weight:700;font-size:12px;padding:5px 12px;border-radius:999px}
+.pricing-hero h1{font-size:34px;margin:16px 0 10px}
+.pricing-hero p{color:var(--muted);font-size:16px;margin:0}
+.billing-toggle{display:inline-flex;gap:4px;background:var(--bg-alt);border-radius:999px;padding:4px;margin:26px auto 0}
+.billing-toggle button{border:0;background:transparent;color:var(--muted);font-weight:700;font-size:13px;padding:8px 18px;border-radius:999px;cursor:pointer}
+.billing-toggle button.active{background:var(--surface);color:var(--primary);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.billing-toggle .save{font-size:11px;color:var(--primary);font-weight:700;margin-left:4px}
+
+.plans-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1040px;margin:34px auto;padding:0 20px}
+.plan-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:26px 24px;display:flex;flex-direction:column}
+.plan-card.featured{border-color:var(--primary);box-shadow:0 10px 34px -12px #15603d55;position:relative}
+.plan-card .tag{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--primary);color:#fff;font-size:11px;font-weight:700;padding:4px 14px;border-radius:999px}
+.plan-card h3{font-size:19px;margin:0 0 4px}
+.plan-card .desc{color:var(--muted);font-size:13px;min-height:38px;margin:0 0 14px}
+.plan-price{display:flex;align-items:baseline;gap:6px;margin-bottom:4px}
+.plan-price .amount{font-size:32px;font-weight:800;color:var(--ink)}
+.plan-price .per{color:var(--muted);font-size:13px}
+.plan-price .free{font-size:28px;font-weight:800;color:var(--primary)}
+.plan-year{font-size:12px;color:var(--muted);min-height:18px;margin-bottom:18px}
+.plan-card .button{width:100%;margin-bottom:18px}
+.plan-feats{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.plan-feats li{display:flex;gap:9px;font-size:13.5px;color:var(--ink);align-items:flex-start}
+.plan-feats li i{flex-shrink:0;margin-top:1px}
+.plan-feats li.off{color:var(--muted);opacity:.7}
+.plan-feats li.off i{color:var(--muted)}
+.feat-on{color:var(--primary)}
+@media (max-width:900px){.plans-grid{grid-template-columns:1fr;max-width:460px}.plan-card.featured{order:-1}}
+
+/* --- Badge d'offre (topbar/sidebar) --- */
+.plan-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10.5px;font-weight:800;letter-spacing:.02em;text-transform:uppercase}
+.plan-badge.gratuit{background:var(--bg-alt);color:var(--muted)}
+.plan-badge.pro{background:var(--primary-light);color:var(--primary-dark)}
+.plan-badge.entreprise{background:#1e293b;color:#fff}
+.nav-lock{margin-left:auto;opacity:.6}
+
+/* --- Menu utilisateur (dropdown) --- */
+.user-menu{position:relative;cursor:pointer}
+.user-dropdown{position:absolute;right:0;top:calc(100% + 8px);background:var(--surface);border:1px solid var(--line);border-radius:12px;min-width:220px;box-shadow:0 14px 40px -12px rgba(0,0,0,.3);padding:8px;display:none;z-index:60}
+.user-dropdown.open{display:block}
+.user-dropdown .dd-head{padding:10px 12px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.user-dropdown .dd-head strong{display:block;font-size:13.5px;color:var(--ink)}
+.user-dropdown .dd-head span{font-size:12px;color:var(--muted)}
+.user-dropdown a,.user-dropdown button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:none;border:0;padding:9px 12px;border-radius:8px;font-size:13.5px;color:var(--ink);cursor:pointer;text-decoration:none}
+.user-dropdown a:hover,.user-dropdown button:hover{background:var(--bg-alt)}
+.topbar-auth{display:flex;gap:8px;align-items:center}
+
+/* --- Overlay de verrouillage (gate) --- */
+.vbf-gate-overlay{position:fixed;inset:0;background:color-mix(in srgb,var(--bg) 78%,transparent);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px}
+.vbf-gate-card{background:var(--surface);border:1px solid var(--line);border-radius:18px;max-width:440px;width:100%;padding:34px 30px;text-align:center;box-shadow:0 20px 60px -18px rgba(0,0,0,.4)}
+.vbf-gate-ico{width:62px;height:62px;border-radius:50%;background:var(--primary-light);color:var(--primary);display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
+.vbf-gate-card h2{font-size:21px;margin:0 0 8px}
+.vbf-gate-card p{color:var(--muted);font-size:14.5px;line-height:1.6;margin:0 0 22px}
+.vbf-gate-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+/* --- Checkout --- */
+.checkout-wrap{max-width:880px;margin:30px auto;padding:0 20px;display:grid;grid-template-columns:1.3fr .9fr;gap:24px}
+.checkout-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px}
+.checkout-box h2{font-size:18px;margin:0 0 16px}
+.op-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:8px}
+.op-card{border:1.5px solid var(--line);border-radius:10px;padding:12px 8px;text-align:center;cursor:pointer;font-weight:600;font-size:13px}
+.op-card.sel{border-color:var(--primary);background:var(--primary-light);color:var(--primary-dark)}
+.summary-row{display:flex;justify-content:space-between;font-size:14px;padding:8px 0;color:var(--ink)}
+.summary-row.total{border-top:1px solid var(--line);margin-top:8px;padding-top:12px;font-weight:800;font-size:17px}
+@media (max-width:800px){.checkout-wrap{grid-template-columns:1fr}}
+
+/* --- Compte --- */
+.acct-grid{display:grid;gap:18px;max-width:760px}
+.acct-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px}
+.acct-card h2{font-size:16px;margin:0 0 14px;display:flex;align-items:center;gap:8px}
+.pay-table{width:100%;border-collapse:collapse;font-size:13px}
+.pay-table th,.pay-table td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
+.pay-table th{color:var(--muted);font-weight:600}
+.status-pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px}
+.status-pill.paye{background:var(--primary-light);color:var(--primary-dark)}
+.status-pill.pending{background:#fef9c3;color:#854d0e}
+.status-pill.echec{background:#fee2e2;color:#b91c1c}
+.key-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
+.key-row code{font-family:ui-monospace,monospace;background:var(--bg-alt);padding:3px 7px;border-radius:6px}

@@ -21,10 +21,21 @@
 .ent-contact{display:flex;gap:10px;align-items:center;font-size:13.5px}
 .ent-contact .ic{width:32px;height:32px;border-radius:9px;background:var(--primary-light);color:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .ent-contact span{color:var(--muted);font-size:11px;display:block;text-transform:uppercase;letter-spacing:.3px;font-weight:700}
+.ent-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.ent-ville-badge{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;padding:2px 8px;border-radius:6px;background:var(--line);color:var(--text);font-weight:500}
+.ent-strip{display:flex;flex-direction:column;gap:5px;padding:9px 11px;border-radius:10px;background:var(--bg);border:1px solid var(--line)}
+.ent-strip-row{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink);min-width:0}
+.ent-strip-row i{color:var(--primary);flex-shrink:0}
+.ent-strip-row b{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ent-strip-row em{color:var(--muted);font-style:normal;font-size:11px;text-transform:uppercase;letter-spacing:.3px;font-weight:700;margin-right:2px}
+.ent-contact a{color:var(--primary);font-weight:700;text-decoration:none}
+.ent-contact a:hover{text-decoration:underline}
+.ent-copy{margin-left:auto;cursor:pointer;color:var(--muted);background:none;border:none;padding:4px;border-radius:6px;display:flex}
+.ent-copy:hover{background:var(--primary-light);color:var(--primary)}
 </style>
 </head>
 <body>
-<div id="app" data-page="entreprises"></div>
+<div id="app" data-page="entreprises" data-requires="entreprises"></div>
 <main class="main" id="main-content">
   <div id="view-list">
     <section class="markets-hero" style="margin-bottom:16px">
@@ -33,8 +44,10 @@
       <p class="hero-copy">Les entreprises qui remportent les marchés publics : performances, montants et coordonnées.</p>
     </section>
     <section class="stat-band" id="stats"></section>
-    <div class="filterbar">
-      <div class="search-box"><i data-icon="search" data-size="18"></i><input id="q" placeholder="Rechercher une entreprise…"></div>
+    <div class="filterbar" style="flex-wrap:wrap">
+      <div class="search-box"><i data-icon="search" data-size="18"></i><input id="q" placeholder="Nom, IFU, RCCM, téléphone, ville…"></div>
+      <select id="filter-secteur"><option value="">Tous les secteurs</option></select>
+      <select id="filter-ville"><option value="">Toutes les villes</option></select>
       <select id="sort">
         <option value="gagnes">Plus de marchés gagnés</option>
         <option value="montant">Montant total remporté</option>
@@ -42,14 +55,19 @@
         <option value="taux">Meilleur taux de réussite</option>
       </select>
     </div>
+    <div class="chip-row" id="chips">
+      <span class="chip-label">Afficher</span>
+      <button class="chip-btn active" data-v="all">Toutes</button>
+      <button class="chip-btn" data-v="won"><i data-icon="trophy" data-size="13"></i> Attributaires</button>
+      <button class="chip-btn" data-v="tel"><i data-icon="phone" data-size="13"></i> Avec contact</button>
+      <button class="chip-btn" data-v="group"><i data-icon="users" data-size="13"></i> Groupements</button>
+    </div>
     <div class="results-bar"><div class="rb-count" id="count">—</div></div>
     <section class="mk-grid" id="grid"></section>
     <div id="more-wrap" style="text-align:center;margin-top:18px" hidden><button class="button secondary-button" id="btn-more">Afficher plus</button></div>
   </div>
 
   <div id="view-detail" hidden></div>
-
-  <div class="app-footer"><span>Données issues des résultats provisoires de la DGCMEF.</span><span>© 2026 Veille BF</span></div>
 </main>
 
 <script src="assets/data.js"></script>
@@ -60,7 +78,7 @@
 (function(){
   var DR = window.DATA_RESULTATS || {resultats:[],entreprises:[],stats:{},ready:false};
   var ents = DR.entreprises || [], resultats = DR.resultats || [], LIMIT = 48;
-  var state = {q:'', sort:'gagnes'};
+  var state = {q:'', ville:'', secteur:'', sort:'gagnes', scope:'all'};
 
   function initials(n){ return (n||'?').split(/\s+/).filter(Boolean).slice(0,2).map(function(w){return w[0];}).join('').toUpperCase(); }
 
@@ -73,6 +91,19 @@
     return;
   }
 
+  // Listes déroulantes villes + secteurs (avec compteurs)
+  var selVille = document.getElementById('filter-ville');
+  var villesList = (DR.stats && DR.stats.villes) ? DR.stats.villes : [];
+  villesList.forEach(function(v){
+    var opt = document.createElement('option'); opt.value = v; opt.textContent = v; selVille.appendChild(opt);
+  });
+  var selSec = document.getElementById('filter-secteur');
+  var secCount = {};
+  ents.forEach(function(e){ (e.secteurs||[]).forEach(function(s){ secCount[s]=(secCount[s]||0)+1; }); });
+  Object.keys(secCount).sort(function(a,b){return secCount[b]-secCount[a];}).forEach(function(s){
+    var sh=(window.sectorMeta?window.sectorMeta(s).short:s)||s; var opt=document.createElement('option'); opt.value=s; opt.textContent=sh+' ('+secCount[s]+')'; selSec.appendChild(opt);
+  });
+
   var s = DR.stats || {};
   document.getElementById('stats').innerHTML = [
     ['', 'building2', (s.nb_entreprises||ents.length).toLocaleString('fr-FR'), 'Entreprises recensées'],
@@ -82,20 +113,50 @@
 
   function card(e){
     var sec = e.secteurs && e.secteurs.length ? window.sectorChip(e.secteurs[0]) : '';
+    var villeBadge = e.ville ? '<span class="ent-ville-badge"><i data-icon="map-pin" data-size="11"></i> '+e.ville+'</span>' : '';
+    var strip = '';
+    if(e.tel || e.ifu){
+      strip = '<div class="ent-strip">'
+        +(e.tel?'<div class="ent-strip-row"><i data-icon="phone" data-size="14"></i><b>'+e.tel+'</b></div>':'')
+        +(e.ifu?'<div class="ent-strip-row"><i data-icon="badge-check" data-size="14"></i><em>IFU</em><b>'+e.ifu+'</b></div>':'')
+        +'</div>';
+    }
     return '<a class="mk-card ent-card" href="entreprises.html?nom='+encodeURIComponent(e.nom)+'">'
       +'<div class="ent-head"><div class="ent-avatar">'+initials(e.nom)+'</div><div class="ent-name">'+e.nom+'</div></div>'
-      +(sec?'<div>'+sec+(e.groupement?' <span class="sector-chip" style="--sec:#64748b"><i data-icon="users" data-size="11"></i> Groupement</span>':'')+'</div>':'')
+      +'<div class="ent-meta">'
+      +(sec || '')
+      +(e.groupement?' <span class="sector-chip" style="--sec:#64748b"><i data-icon="users" data-size="11"></i> Groupement</span>':'')
+      +villeBadge
+      +'</div>'
       +'<div class="ent-kpis">'
       +'<div class="ent-kpi"><b class="ent-win">'+e.gagnes+'</b><span>gagné'+(e.gagnes>1?'s':'')+'</span></div>'
       +'<div class="ent-kpi"><b>'+e.soumissions+'</b><span>soumis.</span></div>'
       +'<div class="ent-kpi"><b>'+e.taux_reussite+'%</b><span>réussite</span></div>'
       +'</div>'
+      +strip
       +'<div class="mk-card-bottom"><span class="deadline-pill result"><i data-icon="coins" data-size="12"></i> '+(e.montant_gagne?window.fmtAmount(e.montant_gagne):'—')+'</span><span class="sh-link">Fiche <i data-icon="arrow-right" data-size="13"></i></span></div>'
       +'</a>';
   }
 
   function filtered(){
-    var l = ents.filter(function(e){ return !state.q || e.nom.toLowerCase().indexOf(state.q.toLowerCase())>-1; });
+    var qLower = state.q ? state.q.toLowerCase().trim() : '';
+    var l = ents.filter(function(e){
+      var matchQ = !qLower || e.nom.toLowerCase().indexOf(qLower)>-1
+                   || (e.adresse && e.adresse.toLowerCase().indexOf(qLower)>-1)
+                   || (e.ville && e.ville.toLowerCase().indexOf(qLower)>-1)
+                   || (e.tel && e.tel.toLowerCase().indexOf(qLower)>-1)
+                   || (e.ifu && e.ifu.toLowerCase().indexOf(qLower)>-1)
+                   || (e.rccm && e.rccm.toLowerCase().indexOf(qLower)>-1);
+      if(!matchQ) return false;
+      if(state.ville && !((e.ville && e.ville.toLowerCase()===state.ville.toLowerCase())
+                       || (e.adresse && e.adresse.toLowerCase().indexOf(state.ville.toLowerCase())>-1))) return false;
+      if(state.secteur && (!e.secteurs || e.secteurs.indexOf(state.secteur)<0)) return false;
+      if(state.scope==='won' && !(e.gagnes>0)) return false;
+      if(state.scope==='tel' && !e.tel) return false;
+      if(state.scope==='group' && !e.groupement) return false;
+      return true;
+    });
+
     if(state.sort==='montant') l.sort(function(a,b){return b.montant_gagne-a.montant_gagne;});
     else if(state.sort==='soumissions') l.sort(function(a,b){return b.soumissions-a.soumissions;});
     else if(state.sort==='taux') l.sort(function(a,b){return b.taux_reussite-a.taux_reussite || b.gagnes-a.gagnes;});
@@ -107,7 +168,7 @@
     var l = filtered(), show = l.slice(0, LIMIT);
     document.getElementById('count').innerHTML = '<b>'+l.length.toLocaleString('fr-FR')+'</b> entreprise'+(l.length>1?'s':'');
     document.getElementById('grid').innerHTML = l.length ? show.map(card).join('')
-      : '<div class="empty-soft"><div class="es-ico"><i data-icon="search" data-size="26"></i></div><strong>Aucune entreprise</strong>Modifiez votre recherche.</div>';
+      : '<div class="empty-soft"><div class="es-ico"><i data-icon="search" data-size="26"></i></div><strong>Aucune entreprise trouvée</strong>Modifiez vos critères de recherche.</div>';
     document.getElementById('more-wrap').hidden = show.length>=l.length;
     window.renderIcons(document.getElementById('grid'));
   }
@@ -116,8 +177,21 @@
     var e = ents.filter(function(x){return x.nom===nom;})[0];
     if(!e){ location.href='entreprises.html'; return; }
     var wins = resultats.filter(function(r){ return !r.infructueux && (r.attributaire_canon===nom || r.attributaire===nom); });
-    var contact = function(ic,label,val){ return val ? '<div class="ent-contact"><div class="ic"><i data-icon="'+ic+'" data-size="15"></i></div><div><span>'+label+'</span>'+val+'</div></div>' : ''; };
-    var contacts = [contact('badge-check','IFU',e.ifu),contact('file-text','RCCM',e.rccm),contact('phone','Téléphone',e.tel),contact('mail','Email',e.email)].join('') || '<p class="muted" style="font-size:13px">Coordonnées non renseignées dans les avis.</p>';
+    var contact = function(ic,label,val,disp){
+      if(!val) return '';
+      var shown = disp || val;
+      var copy = '<button class="ent-copy" type="button" title="Copier" data-copy="'+(''+val).replace(/"/g,'&quot;')+'"><i data-icon="copy" data-size="14"></i></button>';
+      return '<div class="ent-contact"><div class="ic"><i data-icon="'+ic+'" data-size="15"></i></div><div style="flex:1;min-width:0"><span>'+label+'</span>'+shown+'</div>'+copy+'</div>';
+    };
+    var telDisp = e.tel ? '<a href="tel:'+(''+e.tel).split(/[\/,]/)[0].replace(/\s/g,'')+'">'+e.tel+'</a>' : null;
+    var contacts = [
+      contact('phone','Téléphone',e.tel,telDisp),
+      contact('badge-check','IFU',e.ifu),
+      contact('file-text','RCCM',e.rccm),
+      contact('mail','Email',e.email, e.email?'<a href="mailto:'+e.email+'">'+e.email+'</a>':null),
+      contact('map-pin','Adresse / BP',e.adresse),
+      contact('building2','Ville',e.ville)
+    ].join('') || '<p class="muted" style="font-size:13px">Coordonnées non renseignées dans les avis.</p>';
     var winRows = wins.length ? wins.map(function(r){
       return '<tr><td><strong>'+window.cleanVal(r.objet,'Marché')+'</strong><div class="muted" style="font-size:11px">'+window.cleanVal(r.autorite,'')+'</div></td>'
         +'<td style="white-space:nowrap">'+window.cleanVal(r.date,'—')+'</td>'
@@ -131,7 +205,7 @@
       '<div class="breadcrumb"><a class="link" href="entreprises.html">Entreprises</a><i data-icon="chevron-right" data-size="13"></i><span>Fiche</span></div>'
       +'<div class="panel" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:16px">'
       +'<div class="ent-avatar" style="width:58px;height:58px;border-radius:14px;font-size:20px">'+initials(nom)+'</div>'
-      +'<div style="flex:1;min-width:240px"><h1 style="margin:0 0 6px;font-size:21px">'+nom+'</h1><div style="display:flex;gap:6px;flex-wrap:wrap">'+(e.secteurs||[]).map(window.sectorChip).join('')+(e.groupement?'<span class="sector-chip" style="--sec:#64748b"><i data-icon="users" data-size="11"></i> Groupement</span>':'')+'</div></div></div>'
+      +'<div style="flex:1;min-width:240px"><h1 style="margin:0 0 6px;font-size:21px">'+nom+'</h1><div style="display:flex;gap:6px;flex-wrap:wrap">'+(e.secteurs||[]).map(window.sectorChip).join('')+(e.groupement?'<span class="sector-chip" style="--sec:#64748b"><i data-icon="users" data-size="11"></i> Groupement</span>':'')+(e.ville?'<span class="ent-ville-badge"><i data-icon="map-pin" data-size="11"></i> '+e.ville+'</span>':'')+'</div></div></div>'
       +'<section class="stat-band" style="grid-template-columns:repeat(4,1fr)">'
       +'<div class="stat-tile"><div class="st-ico"><i data-icon="trophy" data-size="20"></i></div><div><div class="st-val">'+e.gagnes+'</div><div class="st-lbl">Marchés gagnés</div></div></div>'
       +'<div class="stat-tile blue"><div class="st-ico"><i data-icon="coins" data-size="20"></i></div><div><div class="st-val" style="font-size:19px">'+(e.montant_gagne?window.fmtAmount(e.montant_gagne):'—')+'</div><div class="st-lbl">Total remporté</div></div></div>'
@@ -141,16 +215,24 @@
       +'<div class="mkt-layout" style="grid-template-columns:minmax(0,1fr) 300px;margin-top:4px">'
       +'<div class="panel"><h2 style="font-size:15px;margin:0 0 10px"><i data-icon="trophy" data-size="15" style="color:var(--primary)"></i> Marchés remportés</h2>'
       +'<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Objet</th><th>Date</th><th>Montant</th><th></th></tr></thead><tbody>'+winRows+'</tbody></table></div></div>'
-      +'<div class="panel"><h2 style="font-size:15px;margin:0 0 12px"><i data-icon="phone" data-size="15" style="color:var(--primary)"></i> Coordonnées</h2><div class="ent-contacts">'+contacts+'</div></div>'
+      +'<div class="panel"><h2 style="font-size:15px;margin:0 0 12px"><i data-icon="phone" data-size="15" style="color:var(--primary)"></i> Coordonnées</h2><div class="ent-contacts">'+contacts+'</div>'
+      +'<p class="muted" style="font-size:11.5px;margin:12px 0 0">'+e.conformes+' offre'+(e.conformes>1?'s':'')+' jugée'+(e.conformes>1?'s':'')+' conforme'+(e.conformes>1?'s':'')+' sur '+e.soumissions+' soumission'+(e.soumissions>1?'s':'')+'.</p></div>'
       +'</div>';
     window.renderIcons(dv);
+    dv.querySelectorAll('.ent-copy').forEach(function(btn){
+      btn.addEventListener('click',function(ev){ ev.preventDefault(); var v=this.getAttribute('data-copy');
+        if(navigator.clipboard){ navigator.clipboard.writeText(v).then(function(){ if(window.toast)window.toast('Copié : '+v); }); } });
+    });
   }
 
   var nom = (location.search.match(/nom=([^&]+)/)||[])[1];
   if(nom){ renderDetail(decodeURIComponent(nom.replace(/\+/g,' '))); }
   else {
     document.getElementById('q').addEventListener('input',function(){state.q=this.value;LIMIT=48;renderList();});
+    document.getElementById('filter-ville').addEventListener('change',function(){state.ville=this.value;LIMIT=48;renderList();});
+    document.getElementById('filter-secteur').addEventListener('change',function(){state.secteur=this.value;LIMIT=48;renderList();});
     document.getElementById('sort').addEventListener('change',function(){state.sort=this.value;renderList();});
+    document.getElementById('chips').addEventListener('click',function(e){var b=e.target.closest('.chip-btn');if(!b)return;this.querySelectorAll('.chip-btn').forEach(function(x){x.classList.remove('active');});b.classList.add('active');state.scope=b.dataset.v;LIMIT=48;renderList();});
     document.getElementById('btn-more').addEventListener('click',function(){LIMIT+=48;renderList();});
     renderList();
   }

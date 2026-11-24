@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mon compte · VEILLE BF</title>
+<link rel="icon" href="assets/logo.svg">
+<link rel="stylesheet" href="assets/app.css">
+<link rel="stylesheet" href="assets/app-shell.css">
+<link rel="stylesheet" href="assets/saas.css">
+</head>
+<body>
+<div id="app" data-page="account"></div>
+<main class="main" id="main-content">
+  <div class="section-head"><h2 style="margin:0"><i data-icon="user" data-size="18"></i> Mon compte</h2></div>
+
+  <div class="acct-grid">
+    <div class="acct-card">
+      <h2><i data-icon="sparkles" data-size="16"></i> Offre en cours</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:22px;font-weight:800" id="acct-plan-name">—</div>
+          <div class="muted" id="acct-plan-sub" style="font-size:13px"></div>
+        </div>
+        <a class="button" id="acct-upgrade" href="pricing.html">Changer d'offre</a>
+      </div>
+      <div class="muted" id="acct-sub-info" style="font-size:12.5px;margin-top:12px"></div>
+    </div>
+
+    <div class="acct-card" id="acct-keys-card" hidden>
+      <h2><i data-icon="key" data-size="16"></i> Clés API <span class="plan-badge entreprise">Entreprise</span></h2>
+      <div id="acct-keys"></div>
+      <div id="acct-newkey" style="margin-top:10px"></div>
+      <button class="button ghost" id="acct-addkey" style="margin-top:12px">+ Générer une clé</button>
+    </div>
+
+    <div class="acct-card">
+      <h2><i data-icon="receipt" data-size="16"></i> Historique de paiements</h2>
+      <table class="pay-table"><thead><tr><th>Date</th><th>Offre</th><th>Montant</th><th>Moyen</th><th>Statut</th></tr></thead>
+        <tbody id="acct-pays"><tr><td colspan="5" class="muted">Chargement…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="app-footer"><span>Données publiques DGCMEF (Burkina Faso).</span><span>© 2026 Veille BF</span></div>
+</main>
+
+<script src="assets/data.js"></script>
+<script src="assets/icons.js"></script>
+<script src="assets/session.js"></script>
+<script>
+(function(){
+  function pill(s){ return '<span class="status-pill '+s+'">'+({paye:'Payé',pending:'En attente',echec:'Échec'}[s]||s)+'</span>'; }
+
+  window.VBF.me().then(function(u){
+    if(!u){ location.href='login.html?next=account.html'; return; }
+    document.getElementById('acct-plan-name').textContent = u.plan.nom;
+    document.getElementById('acct-plan-sub').textContent =
+      u.plan.id==='gratuit' ? 'Passez à Pro pour débloquer alertes, exports et résultats.'
+      : 'Merci de votre confiance.';
+    if(u.plan.id==='entreprise'){ document.getElementById('acct-upgrade').textContent='Gérer'; }
+
+    if(window.VBF.hasFeature(u,'api')){
+      document.getElementById('acct-keys-card').hidden=false;
+      loadKeys();
+    }
+
+    window.VBF.api('/api/billing/status').then(function(d){
+      var tb=document.getElementById('acct-pays');
+      if(!d.paiements.length){ tb.innerHTML='<tr><td colspan="5" class="muted">Aucun paiement pour le moment.</td></tr>'; }
+      else { tb.innerHTML=d.paiements.map(function(p){
+        return '<tr><td>'+(p.cree_le||'').slice(0,10)+'</td><td>'+p.plan_id+' ('+p.cycle+')</td>'
+          +'<td>'+Number(p.montant_fcfa).toLocaleString('fr-FR')+' FCFA</td>'
+          +'<td>'+(p.operateur||'—')+'</td><td>'+pill(p.statut)+'</td></tr>';
+      }).join(''); }
+      if(d.abonnement && d.abonnement.fin){
+        document.getElementById('acct-sub-info').textContent='Abonnement actif jusqu\'au '+String(d.abonnement.fin).slice(0,10)+'.';
+      }
+    });
+    window.renderIcons(document.getElementById('main-content'));
+  });
+
+  function loadKeys(){
+    window.VBF.api('/api/billing/api-keys').then(function(d){
+      var box=document.getElementById('acct-keys');
+      box.innerHTML = d.cles.length ? d.cles.map(function(k){
+        return '<div class="key-row"><div><code>'+k.prefixe+'…</code> '+(k.label?('· '+k.label):'')
+          +'<div class="muted" style="font-size:11px">créée le '+(k.cree_le||'').slice(0,10)+'</div></div>'
+          +'<button class="button ghost" data-revoke="'+k.id+'" style="min-height:32px;padding:4px 10px">Révoquer</button></div>';
+      }).join('') : '<p class="muted" style="font-size:13px">Aucune clé. Générez-en une pour utiliser l\'API.</p>';
+      box.querySelectorAll('[data-revoke]').forEach(function(b){
+        b.addEventListener('click', function(){
+          window.VBF.api('/api/billing/api-keys/'+b.dataset.revoke, {method:'DELETE'}).then(loadKeys);
+        });
+      });
+    });
+  }
+
+  document.getElementById('acct-addkey').addEventListener('click', function(){
+    window.VBF.api('/api/billing/api-keys', {body:{label:'Clé '+new Date().toLocaleDateString('fr-FR')}}).then(function(d){
+      document.getElementById('acct-newkey').innerHTML =
+        '<div class="alert success">Nouvelle clé (copiez-la, elle ne sera plus affichée) :<br><code style="word-break:break-all">'+d.cle+'</code></div>';
+      loadKeys();
+    });
+  });
+
+  window.renderIcons && window.renderIcons();
+})();
+</script>
+<script src="assets/shell.js"></script>
+</body>
+</html>

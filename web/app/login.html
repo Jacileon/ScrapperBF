@@ -1,1 +1,59 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=dashboard.html"><title>Redirection...</title><script>location.replace("dashboard.html");</script></head><body><p>Redirection vers <a href="dashboard.html">Tableau de bord</a>...</p></body></html>
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connexion · VEILLE BF</title>
+<link rel="icon" href="assets/logo.svg">
+<link rel="stylesheet" href="assets/app.css">
+<link rel="stylesheet" href="assets/app-shell.css">
+<link rel="stylesheet" href="assets/saas.css">
+</head>
+<body>
+<div class="auth-shell">
+  <aside class="auth-aside">
+    <a class="brand" href="pricing.html"><img src="assets/logo.svg" alt=""> VEILLE BF</a>
+    <div>
+      <h2>La veille des marchés publics du Burkina Faso, en un coup d'œil.</h2>
+      <p>Tous les appels d'offres et demandes de prix de la DGCMEF, triés par secteur et prêts à lire.</p>
+      <ul>
+        <li><i data-icon="check" data-size="18"></i> Recherche instantanée dans tous les marchés</li>
+        <li><i data-icon="check" data-size="18"></i> Alertes et export pour l'offre Pro</li>
+        <li><i data-icon="check" data-size="18"></i> Résultats d'attribution et entreprises soumissionnaires</li>
+      </ul>
+    </div>
+    <span class="foot">© 2026 Veille BF · Données publiques DGCMEF</span>
+  </aside>
+
+  <main class="auth-main">
+    <div class="auth-card">
+      <h1>Connexion</h1>
+      <p class="sub">Accédez à votre espace de veille.</p>
+
+      <div class="alert success" data-already hidden>Vous êtes déjà connecté. <a class="link" href="dashboard.html">Aller au tableau de bord</a></div>
+
+      <form class="auth-form" data-auth="login" novalidate>
+        <div class="alert error" data-error hidden></div>
+        <div class="field">
+          <label for="email">Adresse email</label>
+          <input id="email" name="email" type="email" autocomplete="email" required placeholder="vous@entreprise.bf">
+        </div>
+        <div class="field">
+          <label for="password">Mot de passe</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="••••••••">
+          <a class="link hint" href="forgot-password.html">Mot de passe oublié ?</a>
+        </div>
+        <button class="button full lg" type="submit">Se connecter</button>
+      </form>
+
+      <p class="auth-switch">Pas encore de compte ? <a class="link" href="register.html">Créer un compte gratuit</a></p>
+    </div>
+  </main>
+</div>
+
+<script src="assets/icons.js"></script>
+<script src="assets/session.js"></script>
+<script src="assets/auth.js"></script>
+<script>window.renderIcons && window.renderIcons();</script>
+</body>
+</html>
