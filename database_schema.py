@@ -62,6 +62,93 @@ CREATE TABLE IF NOT EXISTS detail_lots (
     FOREIGN KEY(annonce_id) REFERENCES annonces_avis(id) ON DELETE CASCADE
 );
 
+-- ============================================================================
+-- NOUVELLES TABLES : SECTION RÉSULTATS PROVISOIRES & SUIVI DES CANDIDATS
+-- ============================================================================
+
+-- 1. Table des marchés attribués / résultats provisoires
+CREATE TABLE IF NOT EXISTS resultats_marches (
+    id TEXT PRIMARY KEY,                       -- ex: Quotidien_N4536_res_001
+    bulletin TEXT,                             -- ex: Quotidien N°4536
+    date_parution TEXT,                        -- ex: 20/11/2026
+    pages TEXT,                                -- ex: p. 5
+    autorite_contractante TEXT,                -- Nom canonique de l'émetteur
+    reference_dossier TEXT,                    -- Référence du dossier (ex: N°001/2026/PDP/DIS)
+    reference_normalisee TEXT,                 -- Référence épurée pour matching automatique
+    annonce_avis_id TEXT,                      -- Clé étrangère vers annonces_avis(id) si matché
+    objet TEXT,                                -- Objet du marché
+    secteur_activite TEXT,                     -- Secteur métier (13 secteurs)
+    financement TEXT,                          -- Source de financement
+    methode_selection TEXT,                    -- Qualité-Coût, Moindre Coût, Qualifications, etc.
+    score_technique_min_requis REAL,           -- Note technique éliminatoire (ex: 70 ou 75 pts)
+    decision_arcop_ref TEXT,                   -- Référence de décision ARCOP si contentieux/recours
+    est_rectificatif BOOLEAN DEFAULT 0,        -- 1 si synthèse rectificative / erratum
+    date_depouillement TEXT,                   -- JJ/MM/AAAA
+    date_deliberation TEXT,                    -- JJ/MM/AAAA
+    nombre_lots INTEGER DEFAULT 1,             -- Nombre de lots
+    budget_previsionnel_min_fcfa INTEGER,      -- Montant prévisionnel Min
+    budget_previsionnel_max_fcfa INTEGER,      -- Montant prévisionnel Max
+    source_file TEXT,                          -- Fichier d'origine
+    json_brut TEXT,                            -- Payload JSON complet
+    date_extraction TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(annonce_avis_id) REFERENCES annonces_avis(id) ON DELETE SET NULL
+);
+
+-- 2. Table des lots et des seuils Min/Max de régulation
+CREATE TABLE IF NOT EXISTS resultats_lots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    resultat_id TEXT,
+    numero_lot INTEGER,                        -- 1, 2, ...
+    intitule_lot TEXT,                         -- Titre du lot
+    nombre_plis_recus INTEGER,                 -- Nombre exact de plis reçus
+    budget_lot_min_fcfa INTEGER,               -- Budget min du lot
+    budget_lot_max_fcfa INTEGER,               -- Budget max du lot
+    moyenne_offres_fcfa INTEGER,               -- Moyenne arithmétique M des offres
+    borne_inf_basse_fcfa INTEGER,              -- Borne inférieure / anormalement basse
+    seuil_tolerance_5pct_fcfa INTEGER,         -- Seuil de tolérance (ex: -5% de borne basse)
+    borne_sup_elevee_fcfa INTEGER,             -- Borne supérieure / anormalement élevée
+    attributaire_nom TEXT,                     -- Entreprise gagnante
+    montant_attribue_min_fcfa INTEGER,         -- Montant minimum retenu (TTC)
+    montant_attribue_max_fcfa INTEGER,         -- Montant maximum retenu (TTC)
+    delai_execution TEXT,                      -- Délai d'exécution contractualisé
+    est_infructueux BOOLEAN DEFAULT 0,         -- 1 si infructueux, 0 sinon
+    motif_infructueux TEXT,                    -- Raison officielle de l'échec
+    FOREIGN KEY(resultat_id) REFERENCES resultats_marches(id) ON DELETE CASCADE
+);
+
+-- 3. Table des soumissionnaires et des offres proposées (Min/Max, Lu/Corrigé)
+CREATE TABLE IF NOT EXISTS resultats_soumissionnaires (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    resultat_id TEXT,
+    lot_id INTEGER,
+    nom_soumissionnaire TEXT,                  -- Nom tel qu'écrit dans le PV
+    nom_canonique TEXT,                        -- Nom nettoyé pour agrégat CRM
+    ifu TEXT,                                  -- Identifiant Financier Unique
+    rccm TEXT,                                 -- Registre du Commerce et du Crédit Mobilier
+    telephone TEXT,                            -- Numéros de contact
+    email TEXT,                                -- Email de contact
+    adresse_bp TEXT,                           -- Boîte postale et ville
+    score_technique REAL,                      -- Note technique obtenue sur 100
+    est_groupement BOOLEAN DEFAULT 0,          -- 1 si groupement d'entreprises
+    membres_groupement TEXT,                   -- Détail des entreprises co-traitantes
+    montant_lu_htva_min INTEGER,               -- Offre lue publiquement HTVA Min
+    montant_lu_htva_max INTEGER,               -- Offre lue publiquement HTVA Max
+    montant_lu_ttc_min INTEGER,                -- Offre lue publiquement TTC Min
+    montant_lu_ttc_max INTEGER,                -- Offre lue publiquement TTC Max
+    montant_corrige_htva_min INTEGER,          -- Offre corrigée HTVA Min
+    montant_corrige_htva_max INTEGER,          -- Offre corrigée HTVA Max
+    montant_corrige_ttc_min INTEGER,           -- Offre corrigée TTC Min
+    montant_corrige_ttc_max INTEGER,           -- Offre corrigée TTC Max
+    conformite TEXT,                           -- Conforme | Non conforme
+    classement TEXT,                           -- 1er, 2ème, Non classé
+    rang_numerique INTEGER,                    -- 1, 2, ...
+    est_attributaire BOOLEAN DEFAULT 0,        -- 1 si retenu, 0 sinon
+    categorie_rejet TEXT,                      -- OFFRE_ANORMALEMENT_BASSE | TECHNIQUE | ADMINISTRATIF | FINANCIER
+    observations_motifs TEXT,                  -- Motif de rejet ou observation de conformité
+    FOREIGN KEY(resultat_id) REFERENCES resultats_marches(id) ON DELETE CASCADE,
+    FOREIGN KEY(lot_id) REFERENCES resultats_lots(id) ON DELETE CASCADE
+);
+
 -- Index pour accélérer les requêtes métiers
 CREATE INDEX IF NOT EXISTS idx_annonces_date_parution ON annonces_avis(date_parution);
 CREATE INDEX IF NOT EXISTS idx_annonces_date_limite ON annonces_avis(date_limite_depot);
@@ -70,6 +157,11 @@ CREATE INDEX IF NOT EXISTS idx_annonces_budget ON annonces_avis(budget_prevision
 CREATE INDEX IF NOT EXISTS idx_annonces_categorie ON annonces_avis(categorie_marche);
 CREATE INDEX IF NOT EXISTS idx_annonces_secteur ON annonces_avis(secteur_activite);
 CREATE INDEX IF NOT EXISTS idx_detail_lots_annonce ON detail_lots(annonce_id);
+CREATE INDEX IF NOT EXISTS idx_res_marches_ref ON resultats_marches(reference_normalisee);
+CREATE INDEX IF NOT EXISTS idx_res_marches_aut ON resultats_marches(autorite_contractante);
+CREATE INDEX IF NOT EXISTS idx_res_marches_annonce ON resultats_marches(annonce_avis_id);
+CREATE INDEX IF NOT EXISTS idx_res_soum_nom ON resultats_soumissionnaires(nom_canonique);
+CREATE INDEX IF NOT EXISTS idx_res_soum_attributaire ON resultats_soumissionnaires(est_attributaire);
 """
 
 def init_database(db_path: Path = DB_PATH):

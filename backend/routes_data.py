@@ -162,6 +162,64 @@ def list_authorities(
     return {"total": len(rows), "results": rows}
 
 
+_LIVE_RESULTATS_CACHE = {"ts": 0.0, "json_bytes": None, "building": False}
+_CACHE_TTL_SECONDS = 180.0
+
+
+def _refresh_live_cache_bg():
+    import json
+    import time
+    from backend.config import DB_PATH
+    from export_resultats_to_front import build_front_payload
+    try:
+        payload = build_front_payload(DB_PATH)
+        _LIVE_RESULTATS_CACHE["json_bytes"] = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        _LIVE_RESULTATS_CACHE["ts"] = time.time()
+    except Exception:
+        pass
+    finally:
+        _LIVE_RESULTATS_CACHE["building"] = False
+
+
+def _ensure_live_cache_bg():
+    import threading
+    if not _LIVE_RESULTATS_CACHE["building"]:
+        _LIVE_RESULTATS_CACHE["building"] = True
+        threading.Thread(target=_refresh_live_cache_bg, daemon=True).start()
+
+
+@router.get("/data/resultats-live")
+def get_resultats_live():
+    """Données complètes des résultats et entreprises (bytes JSON pré-sérialisés, réponse < 50ms)."""
+    import time
+    from pathlib import Path
+
+    now = time.time()
+    jb = _LIVE_RESULTATS_CACHE["json_bytes"]
+    if jb is None:
+        js_path = Path("web/app/assets/data_resultats.js")
+        if js_path.exists():
+            try:
+                raw = js_path.read_text(encoding="utf-8")
+                prefix = "window.DATA_RESULTATS = "
+                idx = raw.find(prefix)
+                if idx != -1:
+                    jb = raw[idx + len(prefix):].strip().rstrip(";").encode("utf-8")
+                    _LIVE_RESULTATS_CACHE["json_bytes"] = jb
+                    _LIVE_RESULTATS_CACHE["ts"] = now
+            except Exception:
+                jb = None
+        if jb is None:
+            jb = b'{"resultats":[],"entreprises":[],"stats":{},"ready":false}'
+        _ensure_live_cache_bg()
+        return Response(content=jb, media_type="application/json")
+
+    if (now - _LIVE_RESULTATS_CACHE["ts"]) >= _CACHE_TTL_SECONDS:
+        _ensure_live_cache_bg()
+
+    return Response(content=jb, media_type="application/json")
+
+
 # --------------------------------------------------------------------------- #
 # Fonctionnalités premium (verrouillées par offre)
 # --------------------------------------------------------------------------- #
@@ -222,20 +280,199 @@ def list_entreprises(
     """Répertoire des entreprises soumissionnaires (CRM) — offre Pro+."""
     conn = get_db()
     c = conn.cursor()
-    conditions = ["nom_canonique IS NOT NULL", "nom_canonique != ''"]
+    conditions = [
+        "nom_canonique IS NOT NULL",
+        "LENGTH(TRIM(nom_canonique)) > 2",
+        "UPPER(TRIM(nom_canonique)) NOT IN ('NON','OUI','OFFRE','AUCUN','NEANT','NÉANT','INCONNU','SOUMISSIONNAIRE INCONNU','RETENU','NON RETENU','CONFORME','NON CONFORME','ATTRIBUTAIRE','RAS','N/A','NA','BF','RE (S)','SOUMISSIONNAIRE','ENTREPRISE')",
+    ]
     params = []
     if q:
-        conditions.append("(nom_canonique LIKE ? OR ifu LIKE ? OR rccm LIKE ?)")
-        like = f"%{q}%"; params.extend([like, like, like])
+        conditions.append("(nom_canonique LIKE ? OR ifu LIKE ? OR rccm LIKE ? OR telephone LIKE ?)")
+        like = f"%{q}%"; params.extend([like, like, like, like])
     where_sql = "WHERE " + " AND ".join(conditions)
     c.execute(f"""
         SELECT nom_canonique AS nom,
-               MAX(ifu) AS ifu, MAX(rccm) AS rccm, MAX(telephone) AS telephone, MAX(email) AS email,
+               MAX(ifu) AS ifu, MAX(rccm) AS rccm, MAX(telephone) AS telephone,
+               MAX(email) AS email, MAX(adresse_bp) AS adresse,
                COUNT(*) AS soumissions,
-               SUM(CASE WHEN est_attributaire = 1 THEN 1 ELSE 0 END) AS marches_gagnes
+               SUM(CASE WHEN est_attributaire = 1 THEN 1 ELSE 0 END) AS marches_gagnes,
+               ROUND(100.0 * SUM(CASE WHEN est_attributaire = 1 THEN 1 ELSE 0 END) / COUNT(*)) AS taux_reussite,
+               COALESCE(SUM(CASE WHEN est_attributaire = 1 THEN COALESCE(montant_corrige_ttc_max, montant_corrige_ttc_min, montant_lu_ttc_max, montant_lu_ttc_min, 0) ELSE 0 END), 0) AS montant_gagne
         FROM resultats_soumissionnaires {where_sql}
-        GROUP BY nom_canonique ORDER BY soumissions DESC LIMIT ?
+        GROUP BY nom_canonique ORDER BY marches_gagnes DESC, soumissions DESC LIMIT ?
     """, params + [limit])
     rows = [dict(r) for r in c.fetchall()]
     conn.close()
     return {"total": len(rows), "results": rows}
+
+
+@router.get("/data/entreprise")
+def get_entreprise_detail(nom: str = Query(..., min_length=1)):
+    """Fiche détaillée dynamique d'une entreprise depuis SQLite (coordonnées, marchés gagnés, toutes soumissions & remarques)."""
+    from export_resultats_to_front import clean_contact_field, detect_ville
+
+    conn = get_db()
+    c = conn.cursor()
+    target = nom.strip()
+    c.execute("""
+        SELECT s.*, m.objet, m.autorite_contractante AS autorite, m.date_parution AS date,
+               m.reference_dossier AS reference, m.secteur_activite AS secteur,
+               m.annonce_avis_id AS avis_id, m.bulletin,
+               l.numero_lot AS lot, l.intitule_lot AS intitule, l.est_infructueux AS infructueux,
+               l.montant_attribue_min_fcfa, l.montant_attribue_max_fcfa,
+               l.remarques_autorite, l.contacts_entreprises
+        FROM resultats_soumissionnaires s
+        LEFT JOIN resultats_marches m ON m.id = s.resultat_id
+        LEFT JOIN resultats_lots l ON l.id = s.lot_id
+        WHERE UPPER(TRIM(COALESCE(s.nom_canonique, s.nom_soumissionnaire))) = UPPER(?)
+        ORDER BY m.date_parution DESC, s.id DESC
+    """, (target,))
+    sub_rows = [dict(r) for r in c.fetchall()]
+    conn.close()
+
+    if not sub_rows:
+        raise HTTPException(status_code=404, detail="Entreprise introuvable")
+
+    profile = {
+        "nom": sub_rows[0].get("nom_canonique") or target,
+        "soumissions": len(sub_rows),
+        "gagnes": 0,
+        "conformes": 0,
+        "montant_gagne": 0,
+        "secteurs": set(),
+        "ifu": None,
+        "rccm": None,
+        "tel": None,
+        "email": None,
+        "adresse": None,
+        "ville": None,
+        "groupement": False,
+    }
+    wins = []
+    soumissions_list = []
+    seen_wins = set()
+
+    for r in sub_rows:
+        conf = (r.get("conformite") or "").lower()
+        if "conform" in conf and "non conform" not in conf:
+            profile["conformes"] += 1
+        if r.get("secteur"):
+            profile["secteurs"].add(r["secteur"])
+        if r.get("est_groupement"):
+            profile["groupement"] = True
+
+        c_tel, c_bp = clean_contact_field(r.get("telephone"), r.get("adresse_bp"))
+        if not profile["ifu"] and r.get("ifu"):
+            profile["ifu"] = str(r["ifu"]).strip()
+        if not profile["rccm"] and r.get("rccm"):
+            profile["rccm"] = str(r["rccm"]).strip()
+        if not profile["tel"] and c_tel:
+            profile["tel"] = c_tel
+        if not profile["email"] and r.get("email"):
+            profile["email"] = str(r["email"]).strip()
+        if not profile["adresse"] and c_bp:
+            profile["adresse"] = c_bp
+        if not profile["ville"]:
+            profile["ville"] = detect_ville(c_bp) or detect_ville(r.get("observations_motifs"))
+
+        mt_offre = (
+            r.get("montant_corrige_ttc_max") or r.get("montant_corrige_ttc_min")
+            or r.get("montant_lu_ttc_max") or r.get("montant_lu_ttc_min")
+            or r.get("montant_corrige_htva_max") or r.get("montant_corrige_htva_min")
+            or r.get("montant_lu_htva_max") or r.get("montant_lu_htva_min")
+        )
+        mt_lot = r.get("montant_attribue_max_fcfa") or r.get("montant_attribue_min_fcfa") or mt_offre
+        if r.get("est_attributaire"):
+            profile["gagnes"] += 1
+            if mt_offre:
+                profile["montant_gagne"] += mt_offre
+            wkey = (r.get("resultat_id"), r.get("lot"))
+            if wkey not in seen_wins:
+                seen_wins.add(wkey)
+                wins.append({
+                    "resultat_id": r.get("resultat_id"),
+                    "avis_id": r.get("avis_id"),
+                    "objet": r.get("objet"),
+                    "autorite": r.get("autorite"),
+                    "date": r.get("date"),
+                    "reference": r.get("reference"),
+                    "lot": r.get("lot"),
+                    "intitule": r.get("intitule"),
+                    "montant": mt_lot,
+                    "remarques_autorite": r.get("remarques_autorite"),
+                })
+
+        soumissions_list.append({
+            "resultat_id": r.get("resultat_id"),
+            "avis_id": r.get("avis_id"),
+            "objet": r.get("objet"),
+            "autorite": r.get("autorite"),
+            "date": r.get("date"),
+            "lot": r.get("lot"),
+            "est_attributaire": bool(r.get("est_attributaire")),
+            "conformite": r.get("conformite"),
+            "montant_offre": mt_offre,
+            "observations": r.get("observations_motifs") or r.get("remarques_autorite"),
+        })
+
+    profile["secteurs"] = sorted(profile["secteurs"])
+    profile["taux_reussite"] = round(100 * profile["gagnes"] / profile["soumissions"]) if profile["soumissions"] else 0
+    return {"entreprise": profile, "wins": wins, "soumissions": soumissions_list}
+
+
+_LIVE_RESULTATS_CACHE = {"ts": 0.0, "json_bytes": None, "building": False}
+_CACHE_TTL_SECONDS = 180.0
+
+
+def _refresh_live_cache_bg():
+    import json
+    import time
+    from backend.config import DB_PATH
+    from export_resultats_to_front import build_front_payload
+    try:
+        payload = build_front_payload(DB_PATH)
+        _LIVE_RESULTATS_CACHE["json_bytes"] = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        _LIVE_RESULTATS_CACHE["ts"] = time.time()
+    except Exception:
+        pass
+    finally:
+        _LIVE_RESULTATS_CACHE["building"] = False
+
+
+def _ensure_live_cache_bg():
+    import threading
+    if not _LIVE_RESULTATS_CACHE["building"]:
+        _LIVE_RESULTATS_CACHE["building"] = True
+        threading.Thread(target=_refresh_live_cache_bg, daemon=True).start()
+
+
+@router.get("/data/resultats-live")
+def get_resultats_live():
+    """Données complètes des résultats et entreprises (bytes JSON pré-sérialisés, réponse < 50ms)."""
+    import time
+    from pathlib import Path
+
+    now = time.time()
+    jb = _LIVE_RESULTATS_CACHE["json_bytes"]
+    if jb is None:
+        js_path = Path("web/app/assets/data_resultats.js")
+        if js_path.exists():
+            try:
+                raw = js_path.read_text(encoding="utf-8")
+                prefix = "window.DATA_RESULTATS = "
+                idx = raw.find(prefix)
+                if idx != -1:
+                    jb = raw[idx + len(prefix):].strip().rstrip(";").encode("utf-8")
+                    _LIVE_RESULTATS_CACHE["json_bytes"] = jb
+                    _LIVE_RESULTATS_CACHE["ts"] = now
+            except Exception:
+                jb = None
+        if jb is None:
+            jb = b'{"resultats":[],"entreprises":[],"stats":{},"ready":false}'
+        _ensure_live_cache_bg()
+        return Response(content=jb, media_type="application/json")
+
+    if (now - _LIVE_RESULTATS_CACHE["ts"]) >= _CACHE_TTL_SECONDS:
+        _ensure_live_cache_bg()
+
+    return Response(content=jb, media_type="application/json")

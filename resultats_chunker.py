@@ -23,7 +23,9 @@ import re
 import unicodedata
 from typing import Optional
 
-_LOT_START_RE = re.compile(r"(?im)^\s*lot\s*n?[°o]?\s*(\d{1,2})\s*:")
+_LOT_START_RE = re.compile(
+    r"(?im)^\s*lot\s*(?:n\s*[°o]\s*)?(\d{1,3}|unique)\s*(?:[:.\-–]|\s*$)"
+)
 
 
 def _fold(s) -> str:
@@ -32,19 +34,63 @@ def _fold(s) -> str:
     return re.sub(r"\s+", " ", s.lower()).strip()
 
 
-def split_into_lots(flat_text: str):
+def _promote_band_markers(flat_text: str, lot_bands: Optional[list]) -> str:
+    """Si une petite bande de lot colorée (grise, verte, jaune, orange) n'était pas
+    en début de ligne dans le texte aplati (ex: fusion de colonnes), insère un saut de
+    ligne juste avant son intitulé afin que split_into_lots découpe proprement dessus."""
+    if not flat_text or not lot_bands:
+        return flat_text
+    out = flat_text
+    for b in lot_bands:
+        txt = (b.get("text") if isinstance(b, dict) else str(b or "")).strip()
+        if not txt:
+            continue
+        # Préfixe court (ex: "LOT N°1 : Réalisation" ou "1. Acquisition de")
+        tokens = txt[:32].split()
+        if not tokens:
+            continue
+        probe = r"\s+".join(re.escape(tok) for tok in tokens)
+        # Ne pas casser si déjà en début de ligne
+        out = re.sub(r"(?im)(?<=[^\n\s])([ \t]+)(?=" + probe + r")", "\n", out, count=1)
+    return out
+
+
+def split_into_lots(flat_text: str, lot_bands: Optional[list] = None):
     """Découpe le texte en (préambule, [(numero, texte_lot), …]) sur les
-    marqueurs « Lot N : ». Préambule = tout ce qui précède le 1er lot (en-tête,
-    référence, financement, en-tête de colonnes). S'il n'y a aucun marqueur, le
-    tout est un lot unique numéro 1."""
-    marks = list(_LOT_START_RE.finditer(flat_text or ""))
+    marqueurs « Lot N : / Lot N. / LOT N / Lot Unique : » (y compris ceux issus
+    des petites bandes grises, vertes, jaunes ou oranges).
+    Préambule = tout ce qui précède le 1er lot (en-tête, référence, financement,
+    en-tête de colonnes). S'il n'y a aucun marqueur, le tout est un lot unique numéro 1."""
+    text = _promote_band_markers(flat_text or "", lot_bands)
+    marks = list(_LOT_START_RE.finditer(text))
+    if not marks and lot_bands:
+        # Repli sur les marqueurs numérotés sans le mot « Lot » (ex: bandes grises/vertes « 1. Acquisition... »)
+        alt_patterns = []
+        for b in lot_bands:
+            t = (b.get("text") if isinstance(b, dict) else str(b or "")).strip()
+            m_alt = re.match(r"^\s*(\d{1,2})\s*[:.]\s*\S{3,}", t)
+            if m_alt:
+                alt_patterns.append((m_alt.group(1), re.escape(t[:25])))
+        if alt_patterns:
+            alt_re = re.compile(r"(?im)^\s*(?:" + "|".join(p[1] for p in alt_patterns) + r")")
+            alt_marks = list(alt_re.finditer(text))
+            if alt_marks:
+                preambule = text[: alt_marks[0].start()].strip()
+                lots = []
+                for i, m in enumerate(alt_marks):
+                    end = alt_marks[i + 1].start() if i + 1 < len(alt_marks) else len(text)
+                    num_m = re.match(r"^\s*(\d{1,2})", m.group(0))
+                    lots.append((num_m.group(1) if num_m else str(i + 1), text[m.start():end].strip()))
+                return preambule, lots
+
     if not marks:
-        return (flat_text or "").strip(), [("1", (flat_text or "").strip())]
-    preambule = flat_text[: marks[0].start()].strip()
+        return text.strip(), [("1", text.strip())]
+    preambule = text[: marks[0].start()].strip()
     lots = []
     for i, m in enumerate(marks):
-        end = marks[i + 1].start() if i + 1 < len(marks) else len(flat_text)
-        lots.append((m.group(1), flat_text[m.start():end].strip()))
+        end = marks[i + 1].start() if i + 1 < len(marks) else len(text)
+        num = "Unique" if m.group(1).lower() == "unique" else m.group(1)
+        lots.append((num, text[m.start():end].strip()))
     return preambule, lots
 
 
@@ -65,12 +111,15 @@ def _split_big_lot(numero: str, lot_text: str, budget: int, overlap_lines: int):
     return ["\n".join(p) for p in pieces] or [lot_text]
 
 
-def chunk_unit(unit: dict, max_chars: int = 12000, overlap_lines: int = 3) -> list:
+def chunk_unit(unit: dict, max_chars: int = 12000, overlap_lines: int = 3,
+               split_by_lot: bool = False) -> list:
     """Découpe une unité-émetteur en chunks respectant l'intégrité des lots.
-    Chaque chunk : {index, total, emetteur, lots_inclus, is_continuation, text, +provenance}."""
+    Si `split_by_lot=True`, force un chunk distinct par lot (idéal pour la génération
+    de fichiers .md unitaires parallélisables entre agents sur un même PDF).
+    Chaque chunk : {index, total, emetteur, lots_inclus, is_continuation, flat_text, +provenance}."""
     flat = unit.get("flat_text", "") or ""
     emetteur = unit.get("emetteur", "")
-    preambule, lots = split_into_lots(flat)
+    preambule, lots = split_into_lots(flat, lot_bands=unit.get("lot_bands"))
     header = f"ÉMETTEUR (cadre noir) : {emetteur}\n"
     if preambule:
         header += f"PRÉAMBULE (réf./financement/en-tête de colonnes) :\n{preambule[:900]}\n"
@@ -92,6 +141,12 @@ def chunk_unit(unit: dict, max_chars: int = 12000, overlap_lines: int = 3) -> li
             parts = _split_big_lot(numero, lot_text, budget, overlap_lines)
             for k, part in enumerate(parts):
                 raw_chunks.append(([numero], part, k > 0))
+            continue
+        if split_by_lot:
+            flush()
+            cur_lots, cur_text, cur_size = [numero], [lot_text], len(lot_text) + 2
+            flush()
+            cur_lots, cur_text, cur_size = [], [], 0
             continue
         if cur_size + len(lot_text) > budget and cur_text:
             flush()
@@ -115,11 +170,12 @@ def chunk_unit(unit: dict, max_chars: int = 12000, overlap_lines: int = 3) -> li
             "macro_section": unit.get("macro_section"),
             "lots_inclus": lots_inclus,
             "is_continuation": is_cont,
+            "_is_lot_split": split_by_lot or total > 1,
             "flat_text": header + cont + text,
-            "nb_lots_detectes": 1 if is_cont else len(lots_inclus),
+            "nb_lots_detectes": 1 if (is_cont or split_by_lot) else len(lots_inclus),
             "page_debut": unit.get("page_debut"), "page_fin": unit.get("page_fin"),
-            "_numero": unit.get("_numero"), "_source_pdf": unit.get("_source_pdf"),
-            "_source": unit.get("_source"),
+            "_numero": unit.get("_numero"), "_dossier_index": unit.get("_dossier_index"),
+            "_source_pdf": unit.get("_source_pdf"), "_source": unit.get("_source"),
         })
     return chunks
 

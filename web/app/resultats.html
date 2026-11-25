@@ -59,7 +59,8 @@
 <script src="assets/ui.js"></script>
 <script>
 (function(){
-  var DR = window.DATA_RESULTATS || {resultats:[],entreprises:[],stats:{},ready:false};
+  function initPage(DR){
+  DR = DR || {resultats:[],entreprises:[],stats:{},ready:false};
   var list0 = DR.resultats || [], LIMIT = 60;
   var state = {q:'', sector:'', sort:'recent', status:'all'};
 
@@ -132,6 +133,12 @@
   document.getElementById('chips').addEventListener('click',function(e){var b=e.target.closest('.chip-btn');if(!b)return;this.querySelectorAll('.chip-btn').forEach(function(x){x.classList.remove('active');});b.classList.add('active');state.status=b.dataset.v;LIMIT=60;render();});
   document.getElementById('btn-more').addEventListener('click',function(){LIMIT+=60;render();});
   render();
+  }
+
+  fetch('/api/data/resultats-live')
+    .then(function(res){ if(!res.ok) throw new Error('HTTP '+res.status); return res.json(); })
+    .then(initPage)
+    .catch(function(){ initPage(window.DATA_RESULTATS || {resultats:[],entreprises:[],stats:{},ready:false}); });
 })();
 </script>
 <script src="assets/shell.js"></script>

@@ -103,3 +103,21 @@ def test_merge_infructueux_propagates():
     r = {"lots": [{"numero": 1, "soumissionnaires": [], "infructueux": True}]}
     merged = merge_lot_results([r])
     assert merged["lots"][0]["infructueux"] is True
+
+
+def test_split_into_lots_supports_dots_standalone_unique_and_bands():
+    txt = "REF 2026\nBudget 10M Lot Unique : Support web\nSOUM A\nLot 1. Fourniture PC\nSOUM B\nLOT 2\nSOUM C"
+    pre, lots = split_into_lots(txt, lot_bands=[{"text": "Lot Unique : Support web", "color": "grise"}])
+    assert "REF 2026" in pre
+    assert [n for n, _ in lots] == ["Unique", "1", "2"]
+
+
+def test_chunk_unit_split_by_lot_creates_separate_md_units():
+    flat = "REF 2026\nLot 1 : A\nrow1\nLot 2 : B\nrow2"
+    chunks = chunk_unit(_unit(flat), max_chars=12000, split_by_lot=True)
+    assert len(chunks) == 2
+    assert chunks[0]["lots_inclus"] == ["1"]
+    assert chunks[1]["lots_inclus"] == ["2"]
+    assert chunks[0]["_is_lot_split"] is True
+    assert "row1" in chunks[0]["flat_text"] and "row2" not in chunks[0]["flat_text"]
+    assert "row2" in chunks[1]["flat_text"] and "row1" not in chunks[1]["flat_text"]

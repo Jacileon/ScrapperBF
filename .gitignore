@@ -5,16 +5,24 @@ __pycache__/
 .venv/
 venv/
 env/
+.pytest_cache/
+.mypy_cache/
 
 # Secrets / env
 .env
 .env.local
+model_keys.json
+*.key
+*.pem
 
 # SQLite / DB locale du pipeline
 *.db
 *.sqlite
 *.sqlite3
 ingestion.db
+*.db-wal
+*.db-shm
+*.db.bak*
 
 # Historique de rétroaction (généré localement, boucle d'amélioration)
 feedback_store.json
@@ -43,19 +51,31 @@ Quotidien*.md
 Thumbs.db
 .vscode/
 .idea/
+*.swp
 
 # Comptage des tokens (local)
 token_usage.json
-
-# Clés dédiées par modèle (local, jamais committer)
-model_keys.json
 
 # Dossiers de travail / artefacts régénérables (pas en prod, pas dans Git)
 scratch/
 output_pipeline/
 export_marches/
-telechargements_pdf_classes/
 bench_extracteur.json
 bench_juge.json
 bench_scoreur.json
 bench_report.md
+
+# --- Données d'extraction volumineuses & fichiers transitoires ---
+/resultats_decoupes_md/
+/sections_resultats_pretes/
+/sections_avis_pretes/
+/dossiers_texte_2025/
+/telechargements_pdf/
+/telechargements_pdf_classes/
+/files/
+/clean_lines.txt
+manifeste_*.json
+
+# Logs & audits (générés)
+*.log
+*.jsonl

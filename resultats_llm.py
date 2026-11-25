@@ -28,58 +28,93 @@ from resultats_chunker import chunk_unit, merge_lot_results
 
 # Schéma de sortie : un émetteur -> plusieurs lots -> plusieurs soumissionnaires.
 def _montant_pair(desc):
-    return {"type": "object", "properties": {
-        "min": {"type": "string", "description": desc + " (minimum, tel qu'écrit)"},
-        "max": {"type": "string", "description": desc + " (maximum, tel qu'écrit)"},
-    }}
+    return {
+        "anyOf": [
+            {
+                "type": "object",
+                "properties": {
+                    "min": {"type": ["string", "null"], "description": desc + " (minimum, tel qu'écrit)"},
+                    "max": {"type": ["string", "null"], "description": desc + " (maximum, tel qu'écrit)"},
+                }
+            },
+            {"type": "null"}
+        ]
+    }
 
 
 RESULTATS_SCHEMA = {
     "type": "object",
     "properties": {
-        "autorite_contractante": {"type": "string", "description": "Nom de l'émetteur (barre noire)"},
-        "reference": {"type": "string", "description": "N° du dossier / de l'appel, tel qu'écrit"},
-        "objet": {"type": "string", "description": "Objet global du marché"},
-        "financement": {"type": "string"},
-        "date_deliberation": {"type": "string", "description": "Date de délibération de la commission"},
-        "nombre_lots": {"type": "integer", "description": "Nombre EXACT de lots dans ce tableau"},
+        "autorite_contractante": {"type": ["string", "null"], "description": "Nom de l'émetteur (barre noire)"},
+        "reference": {"type": ["string", "null"], "description": "N° du dossier / de l'appel, tel qu'écrit"},
+        "objet": {"type": ["string", "null"], "description": "Objet global du marché"},
+        "financement": {"type": ["string", "null"]},
+        "date_depouillement": {"type": ["string", "null"], "description": "Date de dépouillement des offres"},
+        "date_deliberation": {"type": ["string", "null"], "description": "Date de délibération de la commission"},
+        "methode_selection": {"type": ["string", "null"], "description": "Sélection Qualité-Coût, Moindre Coût, Qualifications consultants, Demande de prix, etc."},
+        "score_technique_min_requis": {"type": ["string", "null"], "description": "Seuil technique éliminatoire si mentionné (ex: 70 ou 75 pts)"},
+        "decision_arcop_ref": {"type": ["string", "null"], "description": "Référence de décision ARCOP en cas de recours ou contentieux"},
+        "est_rectificatif": {"type": ["boolean", "null"], "description": "true si c'est une synthèse rectificative ou erratum"},
+        "remarques_extracteur": {"type": ["string", "null"], "description": "Alerte ou null"},
+        "nombre_lots": {"type": ["integer", "null"], "description": "Nombre EXACT de lots dans ce tableau"},
+        "budget_previsionnel": _montant_pair("Budget / Enveloppe prévisionnelle globale"),
         "lots": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "numero": {"type": "integer"},
-                    "intitule": {"type": "string", "description": "Libellé du lot (bande orange « Lot N : … »)"},
+                    "numero": {"type": ["integer", "null"]},
+                    "intitule": {"type": ["string", "null"], "description": "Libellé du lot (bande orange « Lot N : … »)"},
+                    "nombre_plis_recus": {"type": ["integer", "null"], "description": "Nombre de plis reçus pour ce lot"},
+                    "budget_lot": _montant_pair("Montant / Budget prévisionnel du lot"),
+                    "moyenne_offres": {"type": ["string", "null"], "description": "Moyenne des offres financières des soumissionnaires"},
+                    "borne_anormalement_basse": {"type": ["string", "null"], "description": "Borne inférieure / Borne anormalement basse"},
+                    "seuil_tolerance_5pct": {"type": ["string", "null"], "description": "Seuil de tolérance (5% ou autre)"},
+                    "borne_anormalement_elevee": {"type": ["string", "null"], "description": "Borne supérieure / Borne anormalement élevée"},
                     "soumissionnaires": {
                         "type": "array",
                         "items": {
                             "type": "object",
                             "properties": {
-                                "nom": {"type": "string"},
-                                "montant_lu_htva": _montant_pair("Montant lu HTVA"),
-                                "montant_corrige_htva": _montant_pair("Montant corrigé HTVA"),
-                                "montant_lu_ttc": _montant_pair("Montant lu TTC"),
-                                "montant_corrige_ttc": _montant_pair("Montant corrigé TTC"),
-                                "conformite": {"type": "string", "description": "conforme | non conforme | non recevable | …"},
-                                "observations": {"type": "string", "description": "Motif/observation, recopié"},
+                                "nom": {"type": ["string", "null"]},
+                                "ifu": {"type": ["string", "null"], "description": "Numéro IFU si mentionné"},
+                                "rccm": {"type": ["string", "null"], "description": "Numéro RCCM si mentionné"},
+                                "contacts": {"type": ["string", "null"], "description": "Téléphone, email, BP si mentionnés"},
+                                "score_technique": {"type": ["string", "null"], "description": "Note technique obtenue sur 100 si marché de prestations/consultants"},
+                                "est_groupement": {"type": ["boolean", "null"], "description": "true si le soumissionnaire est un groupement d'entreprises"},
+                                "montant_lu_htva": _montant_pair("Montant lu HTVA (min et max si commandes)"),
+                                "montant_corrige_htva": _montant_pair("Montant corrigé HTVA (min et max si commandes)"),
+                                "montant_lu_ttc": _montant_pair("Montant lu TTC (min et max si commandes)"),
+                                "montant_corrige_ttc": _montant_pair("Montant corrigé TTC (min et max si commandes)"),
+                                "conformite": {"type": ["string", "null"], "description": "conforme | non conforme | non recevable | …"},
+                                "classement": {"type": ["string", "null"], "description": "1er | 2ème | Non classé | …"},
+                                "categorie_rejet": {"type": ["string", "null"], "description": "OFFRE_ANORMALEMENT_BASSE | TECHNIQUE | ADMINISTRATIF | FINANCIER | null"},
+                                "observations": {"type": ["string", "null"], "description": "Motif de rejet, écart arithmétique ou observation recopiée fidèlement"},
                             },
                         },
                     },
                     "attributaire_provisoire": {
-                        "type": "object",
-                        "properties": {
-                            "nom": {"type": "string"},
-                            "montant_min_ttc": {"type": "string"},
-                            "montant_max_ttc": {"type": "string"},
-                            "delai_execution": {"type": "string"},
-                        },
+                        "anyOf": [
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "nom": {"type": ["string", "null"]},
+                                    "montant_min_ttc": {"type": ["string", "null"]},
+                                    "montant_max_ttc": {"type": ["string", "null"]},
+                                    "delai_execution": {"type": ["string", "null"]},
+                                },
+                            },
+                            {"type": "null"}
+                        ]
                     },
-                    "infructueux": {"type": "boolean", "description": "true si le lot est déclaré infructueux"},
+                    "infructueux": {"type": ["boolean", "null"], "description": "true si le lot est déclaré infructueux"},
+                    "motif_infructueux": {"type": ["string", "null"], "description": "Motif si infructueux"},
+                    "remarques_extracteur": {"type": ["string", "null"], "description": "Alerte ou doute spécifique à ce lot, ou null si certain"},
                 },
             },
         },
     },
-    "required": ["autorite_contractante", "nombre_lots", "lots"],
+    "required": ["autorite_contractante", "lots"],
 }
 
 
@@ -93,20 +128,41 @@ STRUCTURE À RECONSTRUIRE (impérative) :
    bande « Lot N : <intitulé> ». S'il n'y a aucune bande « Lot », c'est qu'il y a
    un lot unique (non numéroté) : rends alors un seul lot.
    -> Donne le nombre EXACT de lots dans "nombre_lots".
-2. Pour CHAQUE lot, le tableau liste les SOUMISSIONNAIRES. Les colonnes sont :
-     - Soumissionnaire (nom de l'entreprise/groupement)
-     - « Montant lu » : décomposé en HTVA (Minimum/Maximum) ET TTC (Minimum/Maximum)
-     - « Montant corrigé » : décomposé en HTVA (Minimum/Maximum) ET TTC (Minimum/Maximum)
-     - Observations (conformité + motif)
+2. SEUILS ET MÉTRIQUES RÉGLEMENTAIRES (crucial) :
+   - Extrais précisément au niveau de l'émetteur ou du lot :
+     * "methode_selection" (ex: Qualité-Coût, Moindre Coût, Demande de prix...)
+     * "score_technique_min_requis" (ex: "70 points" ou "75 points")
+     * "decision_arcop_ref" (ex: décision ARCOP suite à recours ou contentieux)
+     * "est_rectificatif" : true si mention "synthèse rectificative" ou "erratum"
+     * "nombre_plis_recus" (ex: 6 ou 02)
+     * "budget_lot" : minimum et maximum (si marché à commandes) ou montant forfaitaire
+     * "moyenne_offres" (ex: "57 994 640")
+     * "borne_anormalement_basse" / "borne_inferieure" (ex: "49 507 278")
+     * "seuil_tolerance_5pct" (ex: "47 031 914")
+     * "borne_anormalement_elevee" / "borne_superieure"
+3. Pour CHAQUE lot, le tableau liste les SOUMISSIONNAIRES. Les colonnes sont :
+     - Soumissionnaire (nom complet de l'entreprise ou groupement ou personne physique)
+     - Coordonnées : IFU, RCCM, Téléphone, Email, BP si mentionnés dans la case
+     - "est_groupement" : true si groupement de plusieurs entreprises
+     - "score_technique" : note technique sur 100 si marché de consultants/prestations
+     - « Montant lu » : décomposé en HTVA (Minimum ET Maximum si marché à commandes) ET TTC (Minimum ET Maximum)
+     - « Montant corrigé » : décomposé en HTVA (Minimum ET Maximum) ET TTC (Minimum ET Maximum)
+     - Classement / Rang (1er, 2ème, Non classé, etc.)
+     - "categorie_rejet" : OFFRE_ANORMALEMENT_BASSE | TECHNIQUE | ADMINISTRATIF | FINANCIER | null
+     - Observations (conformité + motif précis de rejet ou conformité)
    Beaucoup de cellules valent « -- » (non renseigné) : recopie-les en null.
    Les nombres sont parfois coupés sur plusieurs lignes dans le texte aplati :
    recompose le montant complet (ex. « 354 030 680 »), sans jamais inventer de chiffre.
-3. Identifie l'ATTRIBUTAIRE PROVISOIRE de chaque lot : souvent une ligne « ✓ Lot N :
+4. Identifie l'ATTRIBUTAIRE PROVISOIRE de chaque lot : souvent une ligne « ✓ Lot N :
    <entreprise> pour un montant minimum TTC de … et un montant maximum TTC de …
    avec un délai d'exécution de … ». Si le lot est déclaré « infructueux », mets
-   infructueux=true et laisse l'attributaire vide.
+   infructueux=true, remplis "motif_infructueux" et laisse l'attributaire vide.
 
 RÈGLES :
+- SIGNALEMENT DES DOUTES (remarques_extracteur) :
+  Si un chiffre est flou, si le texte est coupé, si une colonne est ambiguë ou si l'attribution est incertaine,
+  ne devine JAMAIS. Renseigne le champ "remarques_extracteur" pour m'alerter précisément sur ton incertitude.
+  Si toutes les données sont claires et certaines, laisse "remarques_extracteur" à null.
 - Ne DÉDUIS jamais un montant ; recopie exactement ce qui est écrit (espaces inclus),
   ou null si absent/« -- ».
 - Associe chaque soumissionnaire au bon lot (ne mélange pas les lots).

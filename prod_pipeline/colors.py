@@ -26,8 +26,10 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 # Rôles structurels
 ROLE_NOIR = "NOIR"        # Émetteur Résultats (cadre noir)
 ROLE_ORANGE = "ORANGE"    # Lot Résultats (bande orange)
+ROLE_GRIS = "GRIS"        # Lot Résultats (bande grise)
+ROLE_VERT = "VERT"        # Lot Résultats (bande verte)
 ROLE_ROUGE = "ROUGE"      # Catégorie Avis
-ROLE_JAUNE = "JAUNE"      # Émetteur Avis
+ROLE_JAUNE = "JAUNE"      # Émetteur Avis ou Lot Résultats (bande jaune)
 ROLE_CYAN = "CYAN"        # Objet Avis (début d'annonce)
 
 
@@ -148,14 +150,54 @@ def is_red(color: Any) -> bool:
 
 def is_yellow(color: Any) -> bool:
     """
-    Détecte le JAUNE (Bandeau Émetteur de la section Avis).
-    Tolérance calibrée : Rouge et Vert élevés (> 0.60), Bleu faible (< 0.55).
+    Détecte le JAUNE (Bandeau Émetteur de la section Avis ou Lot Résultats).
+    Tolérance calibrée : Rouge et Vert élevés (> 0.65 / 0.60), Bleu faible (< 0.55).
     """
     rgb = normalize_to_rgb(color)
     if rgb is None:
         return False
     r, g, b = rgb
     return (r > 0.65 and g > 0.60 and b < 0.55 and (r - b) >= 0.20 and (g - b) >= 0.20)
+
+
+def is_grey(color: Any) -> bool:
+    """
+    Détecte le GRIS (Bandeau / petite bande de lot ou sous-section dans les résultats).
+    Couvre les niveaux de gris scalaires (0.35..0.965) et triplets gris/gris-bleuté neutres.
+    """
+    rgb = normalize_to_rgb(color)
+    if rgb is None:
+        return False
+    r, g, b = rgb
+    mean = (r + g + b) / 3.0
+    spread = max(r, g, b) - min(r, g, b)
+    return (0.35 <= mean <= 0.965) and (spread <= 0.08)
+
+
+def is_green(color: Any) -> bool:
+    """
+    Détecte le VERT (Bandeau / petite bande de lot dans les résultats : vert franc, sauge, pastel, menthe).
+    """
+    rgb = normalize_to_rgb(color)
+    if rgb is None:
+        return False
+    r, g, b = rgb
+    if min(r, g, b) > 0.96:
+        return False
+    return (g > 0.35 and (g - r) >= 0.03 and (g - b) >= 0.03)
+
+
+def classify_lot_color(color: Any) -> Optional[str]:
+    """Identifie la couleur d'une bande de lot Résultats ('ORANGE', 'JAUNE', 'VERT', 'GRIS') ou None."""
+    if is_yellow(color):
+        return ROLE_JAUNE
+    if is_green(color):
+        return ROLE_VERT
+    if is_orange(color):
+        return ROLE_ORANGE
+    if is_grey(color):
+        return ROLE_GRIS
+    return None
 
 
 def is_cyan(color: Any) -> bool:

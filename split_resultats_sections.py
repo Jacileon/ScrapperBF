@@ -89,21 +89,21 @@ def detecter_bornes_resultats(pdf_path: str) -> Dict[str, Optional[Tuple[int, in
 
         bornes["avis_debut"] = p_avis
 
-        # Calcul des plages (0-based)
+        # Calcul des plages (0-based), bornées strictement à [0, total - 1]
         if p_min:
-            idx_min_start = max(0, p_min - 1)
+            idx_min_start = min(total - 1, max(0, p_min - 1))
             if p_reg:
-                idx_min_end = max(idx_min_start, p_reg - 2)
+                idx_min_end = min(total - 1, max(idx_min_start, p_reg - 2))
             elif p_avis:
-                idx_min_end = max(idx_min_start, p_avis - 2)
+                idx_min_end = min(total - 1, max(idx_min_start, p_avis - 2))
             else:
                 idx_min_end = total - 1
             bornes["mimod"] = (idx_min_start, idx_min_end)
 
         if p_reg:
-            idx_reg_start = max(0, p_reg - 1)
+            idx_reg_start = min(total - 1, max(0, p_reg - 1))
             if p_avis:
-                idx_reg_end = max(idx_reg_start, p_avis - 2)
+                idx_reg_end = min(total - 1, max(idx_reg_start, p_avis - 2))
             else:
                 idx_reg_end = total - 1
             bornes["region"] = (idx_reg_start, idx_reg_end)

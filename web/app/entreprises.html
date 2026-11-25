@@ -76,7 +76,8 @@
 <script src="assets/ui.js"></script>
 <script>
 (function(){
-  var DR = window.DATA_RESULTATS || {resultats:[],entreprises:[],stats:{},ready:false};
+  function initPage(DR){
+  DR = DR || {resultats:[],entreprises:[],stats:{},ready:false};
   var ents = DR.entreprises || [], resultats = DR.resultats || [], LIMIT = 48;
   var state = {q:'', ville:'', secteur:'', sort:'gagnes', scope:'all'};
 
@@ -134,7 +135,7 @@
       +'<div class="ent-kpi"><b>'+e.taux_reussite+'%</b><span>réussite</span></div>'
       +'</div>'
       +strip
-      +'<div class="mk-card-bottom"><span class="deadline-pill result"><i data-icon="coins" data-size="12"></i> '+(e.montant_gagne?window.fmtAmount(e.montant_gagne):'—')+'</span><span class="sh-link">Fiche <i data-icon="arrow-right" data-size="13"></i></span></div>'
+      +'<div class="mk-card-bottom"><span class="deadline-pill result"><i data-icon="coins" data-size="12"></i> '+(e.montant_gagne?window.fmtAmount(e.montant_gagne):(e.gagnes>0?'Répertoire / N.C.':'—'))+'</span><span class="sh-link">Fiche <i data-icon="arrow-right" data-size="13"></i></span></div>'
       +'</a>';
   }
 
@@ -173,10 +174,15 @@
     window.renderIcons(document.getElementById('grid'));
   }
 
-  function renderDetail(nom){
-    var e = ents.filter(function(x){return x.nom===nom;})[0];
+  function renderDetail(nom, liveDetail){
+    var e = (liveDetail && liveDetail.entreprise) || ents.filter(function(x){return x.nom===nom || x.nom.toUpperCase()===nom.toUpperCase();})[0];
     if(!e){ location.href='entreprises.html'; return; }
-    var wins = resultats.filter(function(r){ return !r.infructueux && (r.attributaire_canon===nom || r.attributaire===nom); });
+    var wins = (liveDetail && liveDetail.wins) ? liveDetail.wins : resultats.filter(function(r){
+      if(r.infructueux) return false;
+      if(r.attributaires_canons && r.attributaires_canons.indexOf(e.nom) >= 0) return true;
+      return r.attributaire_canon===e.nom || r.attributaire===e.nom;
+    });
+    var soums = (liveDetail && liveDetail.soumissions) ? liveDetail.soumissions : [];
     var contact = function(ic,label,val,disp){
       if(!val) return '';
       var shown = disp || val;
@@ -193,11 +199,26 @@
       contact('building2','Ville',e.ville)
     ].join('') || '<p class="muted" style="font-size:13px">Coordonnées non renseignées dans les avis.</p>';
     var winRows = wins.length ? wins.map(function(r){
-      return '<tr><td><strong>'+window.cleanVal(r.objet,'Marché')+'</strong><div class="muted" style="font-size:11px">'+window.cleanVal(r.autorite,'')+'</div></td>'
+      var lotInfo = r.lot ? ' · Lot ' + r.lot : '';
+      var refInfo = r.reference ? ' · Réf. ' + r.reference : '';
+      return '<tr><td><strong>'+window.cleanVal(r.objet,'Marché')+'</strong><div class="muted" style="font-size:11px">'+window.cleanVal(r.autorite,'')+lotInfo+refInfo+'</div></td>'
         +'<td style="white-space:nowrap">'+window.cleanVal(r.date,'—')+'</td>'
-        +'<td class="amount-cell">'+(r.montant?window.fmtAmount(r.montant):'—')+'</td>'
+        +'<td class="amount-cell">'+(r.montant?window.fmtAmount(r.montant):'<span class="muted" style="font-size:11px">Répertoire / N.C.</span>')+'</td>'
         +'<td>'+(r.avis_id?'<a class="button secondary-button" style="padding:4px 10px;font-size:12px" href="market.html?id='+encodeURIComponent(r.avis_id)+'">Avis</a>':'')+'</td></tr>';
     }).join('') : '<tr><td colspan="4" class="muted" style="padding:16px">Aucun marché remporté recensé.</td></tr>';
+
+    var soumSection = '';
+    if(soums.length){
+      var soumRows = soums.slice(0, 100).map(function(s){
+        var st = s.est_attributaire ? '<span style="color:#059669;font-weight:600">Retenu</span>' : '<span class="muted">Non retenu</span>';
+        var obs = s.observations ? '<div class="muted" style="font-size:11px;margin-top:2px">'+s.observations+'</div>' : '';
+        return '<tr><td><strong>'+window.cleanVal(s.objet,'Marché')+'</strong><div class="muted" style="font-size:11px">'+window.cleanVal(s.autorite,'')+(s.lot?' · Lot '+s.lot:'')+'</div>'+obs+'</td>'
+          +'<td style="white-space:nowrap">'+st+(s.conformite?'<div class="muted" style="font-size:11px">'+s.conformite+'</div>':'')+'</td>'
+          +'<td class="amount-cell">'+(s.montant_offre?window.fmtAmount(s.montant_offre):'—')+'</td></tr>';
+      }).join('');
+      soumSection = '<div class="panel" style="margin-top:16px"><h2 style="font-size:15px;margin:0 0 10px"><i data-icon="file-text" data-size="15" style="color:var(--primary)"></i> Historique des soumissions &amp; observations ('+soums.length+')</h2>'
+        +'<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Marché &amp; observations</th><th>Statut</th><th>Montant offre</th></tr></thead><tbody>'+soumRows+'</tbody></table></div></div>';
+    }
 
     document.getElementById('view-list').hidden = true;
     var dv = document.getElementById('view-detail'); dv.hidden = false;
@@ -208,7 +229,7 @@
       +'<div style="flex:1;min-width:240px"><h1 style="margin:0 0 6px;font-size:21px">'+nom+'</h1><div style="display:flex;gap:6px;flex-wrap:wrap">'+(e.secteurs||[]).map(window.sectorChip).join('')+(e.groupement?'<span class="sector-chip" style="--sec:#64748b"><i data-icon="users" data-size="11"></i> Groupement</span>':'')+(e.ville?'<span class="ent-ville-badge"><i data-icon="map-pin" data-size="11"></i> '+e.ville+'</span>':'')+'</div></div></div>'
       +'<section class="stat-band" style="grid-template-columns:repeat(4,1fr)">'
       +'<div class="stat-tile"><div class="st-ico"><i data-icon="trophy" data-size="20"></i></div><div><div class="st-val">'+e.gagnes+'</div><div class="st-lbl">Marchés gagnés</div></div></div>'
-      +'<div class="stat-tile blue"><div class="st-ico"><i data-icon="coins" data-size="20"></i></div><div><div class="st-val" style="font-size:19px">'+(e.montant_gagne?window.fmtAmount(e.montant_gagne):'—')+'</div><div class="st-lbl">Total remporté</div></div></div>'
+      +'<div class="stat-tile blue"><div class="st-ico"><i data-icon="coins" data-size="20"></i></div><div><div class="st-val" style="font-size:'+(e.montant_gagne?'19px':'14px')+'">'+(e.montant_gagne?window.fmtAmount(e.montant_gagne):(e.gagnes>0?'Répertoires / N.C.':'—'))+'</div><div class="st-lbl">Total remporté</div></div></div>'
       +'<div class="stat-tile amber"><div class="st-ico"><i data-icon="file-text" data-size="20"></i></div><div><div class="st-val">'+e.soumissions+'</div><div class="st-lbl">Soumissions</div></div></div>'
       +'<div class="stat-tile"><div class="st-ico"><i data-icon="gauge" data-size="20"></i></div><div><div class="st-val">'+e.taux_reussite+'%</div><div class="st-lbl">Taux de réussite</div></div></div>'
       +'</section>'
@@ -217,7 +238,8 @@
       +'<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Objet</th><th>Date</th><th>Montant</th><th></th></tr></thead><tbody>'+winRows+'</tbody></table></div></div>'
       +'<div class="panel"><h2 style="font-size:15px;margin:0 0 12px"><i data-icon="phone" data-size="15" style="color:var(--primary)"></i> Coordonnées</h2><div class="ent-contacts">'+contacts+'</div>'
       +'<p class="muted" style="font-size:11.5px;margin:12px 0 0">'+e.conformes+' offre'+(e.conformes>1?'s':'')+' jugée'+(e.conformes>1?'s':'')+' conforme'+(e.conformes>1?'s':'')+' sur '+e.soumissions+' soumission'+(e.soumissions>1?'s':'')+'.</p></div>'
-      +'</div>';
+      +'</div>'
+      +soumSection;
     window.renderIcons(dv);
     dv.querySelectorAll('.ent-copy').forEach(function(btn){
       btn.addEventListener('click',function(ev){ ev.preventDefault(); var v=this.getAttribute('data-copy');
@@ -226,7 +248,13 @@
   }
 
   var nom = (location.search.match(/nom=([^&]+)/)||[])[1];
-  if(nom){ renderDetail(decodeURIComponent(nom.replace(/\+/g,' '))); }
+  if(nom){
+    var decodedNom = decodeURIComponent(nom.replace(/\+/g,' '));
+    fetch('/api/data/entreprise?nom=' + encodeURIComponent(decodedNom))
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(detail){ renderDetail(decodedNom, detail); })
+      .catch(function(){ renderDetail(decodedNom, null); });
+  }
   else {
     document.getElementById('q').addEventListener('input',function(){state.q=this.value;LIMIT=48;renderList();});
     document.getElementById('filter-ville').addEventListener('change',function(){state.ville=this.value;LIMIT=48;renderList();});
@@ -236,6 +264,12 @@
     document.getElementById('btn-more').addEventListener('click',function(){LIMIT+=48;renderList();});
     renderList();
   }
+  }
+
+  fetch('/api/data/resultats-live')
+    .then(function(res){ if(!res.ok) throw new Error('HTTP '+res.status); return res.json(); })
+    .then(initPage)
+    .catch(function(){ initPage(window.DATA_RESULTATS || {resultats:[],entreprises:[],stats:{},ready:false}); });
 })();
 </script>
 <script src="assets/shell.js"></script>

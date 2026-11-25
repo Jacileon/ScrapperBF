@@ -110,6 +110,38 @@ def provider_specs() -> list:
     L'ordre = ordre d'essai."""
     specs = []
 
+    # --- DeepSeek direct (PRIORITÉ 1) : API compatible OpenAI officielle ---
+    dsk = _keys("DEEPSEEK")
+    dsb = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1").strip()
+    dsm = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat").strip()
+    if dsk and not dsk[0].startswith("METTRE") and dsk[0]:
+        for k in dsk:
+            specs.append({
+                "name": f"deepseek:{dsm}",
+                "kind": "openai_compat",
+                "key": k, "keys": dsk,
+                "base_url": dsb,
+                "model": dsm,
+                "api_key": k,
+            })
+
+    # --- Codelink API (PRIORITÉ 2) : proxy multi-modèles OpenAI-compatible ---
+    # https://api.codelink.chat/v1  — modèles : deepseek-v4.1-flash, glm-5.3-flash, minimax-m3
+    clk = _keys("CODELINK")
+    clb = os.environ.get("CODELINK_BASE_URL", "https://api.codelink.chat/v1").strip()
+    codelink_models_raw = os.environ.get("CODELINK_MODELS", "deepseek-v4.1-flash,deepseek-v4-flash,glm-5.3-flash,minimax-m3")
+    if clk:
+        for clm in [m.strip() for m in codelink_models_raw.split(",") if m.strip()]:
+            specs.append({
+                "name": f"codelink:{clm}",
+                "kind": "openai_compat",
+                "key": clk[0], "keys": clk,
+                "base_url": clb,
+                "model": clm,
+                "api_key": clk[0],
+            })
+            break  # 1 seul modèle Codelink prioritaire pour éviter les 429 en cascade
+
     pool = _keys("OPENROUTER")
     mk = model_key_map()
     if pool or mk:
