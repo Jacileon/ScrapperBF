@@ -9,9 +9,12 @@
     {href:'suivis.html', key:'suivis', icon:'bookmark', label:'Mes marchés'},
     {href:'resultats.html', key:'resultats', icon:'trophy', label:'Résultats', feature:'resultats'},
     {href:'entreprises.html', key:'entreprises', icon:'building2', label:'Entreprises', feature:'entreprises'},
+    {href:'radar.html', key:'radar', icon:'radar', label:'Radar concurrent'},
+    {href:'intelligence.html', key:'intelligence', icon:'chart-column', label:'Intelligence'},
     {href:'authorities.html', key:'authorities', icon:'landmark', label:'Autorités'},
     {href:'directory.html', key:'directory', icon:'archive', label:'Bulletins officiels'},
-    {href:'search.html', key:'search', icon:'search', label:'Recherche'}
+    {href:'search.html', key:'search', icon:'search', label:'Recherche'},
+    {href:'profil.html', key:'profil', icon:'user', label:'Mon espace'}
   ];
 
   var MOBILE = [

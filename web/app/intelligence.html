@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Intelligence marché · VEILLE BF</title>
+<link rel="icon" href="assets/logo.svg">
+<link rel="stylesheet" href="assets/app.css">
+<link rel="stylesheet" href="assets/app-shell.css">
+<link rel="stylesheet" href="assets/saas.css">
+<style>
+.intel-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:860px){.intel-grid{grid-template-columns:1fr}}
+.intel-panel{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:18px}
+.intel-panel h2{font-size:15px;display:flex;align-items:center;gap:8px;margin:0 0 4px}
+.intel-sub{font-size:12.5px;color:var(--muted);margin:0 0 14px}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;font-size:12.5px}
+.bar-row .bl{width:40%;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{flex:1;background:var(--bg-alt);border-radius:6px;height:16px;overflow:hidden}
+.bar-fill{height:100%;background:var(--primary);border-radius:6px}
+.bar-n{width:38px;text-align:right;font-weight:700}
+.pred-item{padding:10px 0;border-bottom:1px solid var(--line)}
+.pred-item:last-child{border:none}
+.pred-item .pa{font-weight:700;font-size:13px}
+.pred-item .pm{font-size:12px;color:var(--muted)}
+.conf{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px}
+.conf.haut{background:#ecfdf5;color:#047857}.conf.moyen{background:#fffbeb;color:#b45309}
+.lookup-row{display:flex;gap:8px;margin-bottom:12px}
+.lookup-row input,.lookup-row select{flex:1;padding:9px 12px;border:1px solid var(--line);border-radius:9px;background:var(--bg);font-size:13px}
+.kv{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px}
+.kv b{font-weight:700}
+.indice-big{font-size:34px;font-weight:800;line-height:1}
+</style>
+</head>
+<body>
+<div id="app" data-page="intelligence"></div>
+<main class="main" id="main-content">
+  <section class="markets-hero" style="margin-bottom:16px">
+    <p class="eyebrow">Données qui donnent l'avantage</p>
+    <h1>Intelligence marché</h1>
+    <p class="hero-copy">Tendances en temps réel, marchés récurrents attendus, fiabilité des autorités et prix réellement attribués — tiré de l'historique officiel.</p>
+  </section>
+
+  <section class="stat-band" id="topstats" style="margin-bottom:16px"></section>
+
+  <div class="intel-grid">
+    <div class="intel-panel">
+      <h2><i data-icon="trending-up" data-size="16"></i> Secteurs les plus actifs</h2>
+      <p class="intel-sub">Marchés ouverts en ce moment, par secteur.</p>
+      <div id="secteurs"></div>
+    </div>
+    <div class="intel-panel">
+      <h2><i data-icon="landmark" data-size="16"></i> Autorités les plus actives</h2>
+      <p class="intel-sub">Qui publie le plus de marchés.</p>
+      <div id="autorites"></div>
+    </div>
+  </div>
+
+  <div class="intel-panel" style="margin-top:16px">
+    <h2><i data-icon="sparkles" data-size="16"></i> Veille prédictive — marchés récurrents attendus</h2>
+    <p class="intel-sub">Des autorités qui repassent régulièrement les mêmes types de marchés : anticipez avant publication.</p>
+    <div id="predictions"></div>
+  </div>
+
+  <div class="intel-grid" style="margin-top:16px">
+    <div class="intel-panel">
+      <h2><i data-icon="shield" data-size="16"></i> Fiabilité d'une autorité</h2>
+      <p class="intel-sub">Taux d'infructueux, concentration des attributions, principaux gagnants.</p>
+      <div class="lookup-row"><input id="q-aut" placeholder="Nom d'une autorité contractante…"><button class="button" id="go-aut">Analyser</button></div>
+      <div id="aut-res"></div>
+    </div>
+    <div class="intel-panel">
+      <h2><i data-icon="coins" data-size="16"></i> Prix réellement attribués</h2>
+      <p class="intel-sub">La fourchette des montants gagnants pour un secteur.</p>
+      <div class="lookup-row"><select id="q-sec"><option value="">Choisir un secteur…</option></select><button class="button" id="go-prix">Voir</button></div>
+      <div id="prix-res"></div>
+    </div>
+  </div>
+
+  <div class="app-footer"><span>Données publiques issues des bulletins officiels de la DGCMEF.</span><span>© 2026 Veille BF</span></div>
+</main>
+
+<script src="assets/icons.js"></script>
+<script src="assets/session.js"></script>
+<script>
+(function(){
+  var V = window.VBF;
+  function fcfa(n){ n=Number(n)||0; return n>=1e9?(n/1e9).toFixed(2).replace('.',',')+' Md':(n>=1e6?(n/1e6).toFixed(1).replace('.',',')+' M':n.toLocaleString('fr-FR'))+' '; }
+  function esc(s){ return (s==null?'':(''+s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+  // Tendances
+  V.api('/api/intel/tendances').then(function(d){
+    document.getElementById('topstats').innerHTML = [
+      ['','briefcase-business',(d.marches_ouverts||0).toLocaleString('fr-FR'),'Marchés ouverts'],
+      ['blue','coins',fcfa(d.budget_total)+'FCFA','Volume cumulé'],
+      ['amber','landmark',(d.top_autorites||[]).length,'Autorités actives']
+    ].map(function(x){ return '<div class="stat-tile '+x[0]+'"><div class="st-ico"><i data-icon="'+x[1]+'" data-size="22"></i></div><div><div class="st-val">'+x[2]+'</div><div class="st-lbl">'+x[3]+'</div></div></div>'; }).join('');
+    var sec=d.par_secteur||[], max=Math.max.apply(null,sec.map(function(s){return s.n;}).concat([1]));
+    document.getElementById('secteurs').innerHTML = sec.slice(0,10).map(function(s){
+      return '<div class="bar-row"><span class="bl">'+esc(s.secteur)+'</span><div class="bar-track"><div class="bar-fill" style="width:'+Math.round(100*s.n/max)+'%"></div></div><span class="bar-n">'+s.n+'</span></div>';
+    }).join('');
+    var aut=d.top_autorites||[], maxa=Math.max.apply(null,aut.map(function(a){return a.n;}).concat([1]));
+    document.getElementById('autorites').innerHTML = aut.map(function(a){
+      return '<div class="bar-row"><span class="bl" title="'+esc(a.autorite)+'">'+esc(a.autorite)+'</span><div class="bar-track"><div class="bar-fill" style="width:'+Math.round(100*a.n/maxa)+'%"></div></div><span class="bar-n">'+a.n+'</span></div>';
+    }).join('');
+    window.renderIcons(document.getElementById('main-content'));
+  });
+
+  // Prédictif
+  V.api('/api/intel/predictions?limit=18').then(function(d){
+    document.getElementById('predictions').innerHTML = (d.predictions||[]).map(function(p){
+      var c = p.confiance==='élevée'?'haut':'moyen';
+      return '<div class="pred-item"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center">'
+        +'<span class="pa">'+esc(p.autorite)+'</span><span class="conf '+c+'">'+esc(p.confiance)+'</span></div>'
+        +'<div class="pm">'+esc(p.secteur)+' · déjà '+p.occurrences+' fois sur '+p.annees+' année(s) — dernier : '+esc((p.dernier_objet||'').slice(0,60))+'</div></div>';
+    }).join('') + '<p class="intel-sub" style="margin-top:10px">'+esc(d.note||'')+'</p>';
+  });
+
+  // Secteurs pour le select prix
+  V.api('/api/stats').then(function(s){
+    var sel=document.getElementById('q-sec');
+    (s.sectors||[]).forEach(function(x){ var o=document.createElement('option'); o.value=x.sector; o.textContent=x.sector+' ('+x.count+')'; sel.appendChild(o); });
+  });
+
+  // Lookup autorité
+  document.getElementById('go-aut').addEventListener('click', function(){
+    var nom=document.getElementById('q-aut').value.trim(); if(nom.length<2) return;
+    var box=document.getElementById('aut-res'); box.innerHTML='<p class="muted">Analyse…</p>';
+    V.api('/api/intel/autorite?nom='+encodeURIComponent(nom)).then(function(d){
+      var top=(d.top_attributaires||[]).slice(0,5).map(function(g){ return '<div class="kv"><span>'+esc(g.nom)+'</span><b>'+g.wins+' marché'+(g.wins>1?'s':'')+'</b></div>'; }).join('');
+      box.innerHTML='<div style="display:flex;align-items:center;gap:14px;margin-bottom:10px"><div class="indice-big" style="color:'+(d.indice_fiabilite>=70?'#047857':d.indice_fiabilite>=40?'#b45309':'#dc2626')+'">'+d.indice_fiabilite+'</div><div><b>Indice de fiabilité</b><div class="muted" style="font-size:12px">'+(d.lots_attribues||0)+' lots · '+(d.nb_entreprises||0)+' entreprises</div></div></div>'
+        +'<div class="kv"><span>Taux d\'infructueux</span><b>'+(d.taux_infructueux!=null?d.taux_infructueux+' %':'—')+'</b></div>'
+        +'<div class="kv"><span>Concentration (top 3)</span><b>'+(d.concentration_top3!=null?d.concentration_top3+' %':'—')+'</b></div>'
+        +'<div style="margin-top:8px;font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:700">Principaux attributaires</div>'+top;
+    }).catch(function(e){ box.innerHTML='<p class="muted">'+((e.data&&e.data.detail)||'Autorité inconnue.')+'</p>'; });
+  });
+
+  // Lookup prix
+  document.getElementById('go-prix').addEventListener('click', function(){
+    var sec=document.getElementById('q-sec').value; if(!sec) return;
+    var box=document.getElementById('prix-res'); box.innerHTML='<p class="muted">Calcul…</p>';
+    V.api('/api/intel/prix?secteur='+encodeURIComponent(sec)).then(function(d){
+      var f=d.fourchette||{};
+      if(!d.nb_marches){ box.innerHTML='<p class="muted">Pas assez de données pour ce secteur.</p>'; return; }
+      box.innerHTML='<div class="kv"><span>Marchés analysés</span><b>'+d.nb_marches+'</b></div>'
+        +'<div class="kv"><span>Minimum</span><b>'+fcfa(f.min)+'FCFA</b></div>'
+        +'<div class="kv"><span>1er quartile</span><b>'+fcfa(f.q1)+'FCFA</b></div>'
+        +'<div class="kv"><span>Médiane</span><b>'+fcfa(f.median)+'FCFA</b></div>'
+        +'<div class="kv"><span>3e quartile</span><b>'+fcfa(f.q3)+'FCFA</b></div>'
+        +'<div class="kv"><span>Maximum</span><b>'+fcfa(f.max)+'FCFA</b></div>';
+    });
+  });
+})();
+</script>
+<script src="assets/shell.js"></script>
+</body>
+</html>

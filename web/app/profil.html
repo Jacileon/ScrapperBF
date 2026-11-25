@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mon espace · VEILLE BF</title>
+<link rel="icon" href="assets/logo.svg">
+<link rel="stylesheet" href="assets/app.css">
+<link rel="stylesheet" href="assets/app-shell.css">
+<link rel="stylesheet" href="assets/saas.css">
+<style>
+.esp-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;align-items:start}
+@media (max-width:900px){.esp-grid{grid-template-columns:1fr}}
+.card{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.card h2{font-size:15px;display:flex;align-items:center;gap:8px;margin:0 0 4px}
+.card .sub{font-size:12.5px;color:var(--muted);margin:0 0 14px}
+.fld{margin-bottom:12px}
+.fld label{display:block;font-size:12px;font-weight:700;margin-bottom:5px}
+.fld input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--bg);font-size:13.5px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sec-chips{display:flex;flex-wrap:wrap;gap:7px}
+.sec-chip{font-size:12px;padding:6px 11px;border-radius:999px;border:1px solid var(--line);cursor:pointer;user-select:none}
+.sec-chip.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+.stat-mini{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat-mini > div{background:var(--bg-alt);border-radius:10px;padding:12px}
+.stat-mini .v{font-size:22px;font-weight:800}
+.stat-mini .l{font-size:11.5px;color:var(--muted)}
+.al-item{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+.al-item button{background:none;border:none;color:var(--muted);cursor:pointer}
+.al-item button:hover{color:var(--danger)}
+.al-add{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-top:10px}
+.al-add select,.al-add input{padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--bg);font-size:13px}
+</style>
+</head>
+<body>
+<div id="app" data-page="profil"></div>
+<main class="main" id="main-content">
+  <section class="markets-hero" style="margin-bottom:16px">
+    <p class="eyebrow">Votre espace</p>
+    <h1>Mon profil & mon espace</h1>
+    <p class="hero-copy">Renseignez votre entreprise pour des scores et un fil personnalisés, suivez vos statistiques et gérez vos alertes.</p>
+  </section>
+  <div id="esp-body"><p class="muted" style="text-align:center;padding:30px">Chargement…</p></div>
+  <div class="app-footer"><span>Vos informations ne servent qu'à personnaliser votre veille.</span><span>© 2026 Veille BF</span></div>
+</main>
+
+<script src="assets/icons.js"></script>
+<script src="assets/session.js"></script>
+<script>
+(function(){
+  var V=window.VBF, body=document.getElementById('esp-body');
+  var SECTEURS=[], sel=[];
+  function esc(s){ return (s==null?'':(''+s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+  function layout(){
+    body.innerHTML =
+      '<div class="esp-grid"><div>'
+      + '<div class="card"><h2><i data-icon="user" data-size="16"></i> Profil de candidature</h2><p class="sub">Sert au scoring et au fil « fait pour moi ».</p>'
+      +   '<div class="fld"><label>Vos secteurs d\'activité</label><div class="sec-chips" id="secchips"></div></div>'
+      +   '<div class="row2"><div class="fld"><label>Budget min (FCFA)</label><input id="bmin" type="number" inputmode="numeric"></div>'
+      +   '<div class="fld"><label>Budget max (FCFA)</label><input id="bmax" type="number" inputmode="numeric"></div></div>'
+      +   '<div class="fld"><label>Agréments détenus</label><input id="agr" placeholder="ex. B1, T2…"></div>'
+      +   '<div class="row2"><div class="fld"><label>Ancienneté (années)</label><input id="anc" type="number" inputmode="numeric"></div>'
+      +   '<div class="fld"><label>Marchés déjà gagnés</label><input id="gag" type="number" inputmode="numeric"></div></div>'
+      +   '<button class="button" id="save-profil"><i data-icon="check" data-size="15"></i> Enregistrer mon profil</button>'
+      + '</div>'
+      + '<div class="card"><h2><i data-icon="bell" data-size="16"></i> Mes alertes</h2><p class="sub">Recevez les nouveaux marchés d\'un secteur.</p><div id="alertes"></div>'
+      +   '<div class="al-add"><select id="al-sec"><option value="">Secteur…</option></select><input id="al-cible" placeholder="Email ou numéro"><button class="button" id="al-add-btn">Ajouter</button></div>'
+      + '</div>'
+      + '</div><div>'
+      + '<div class="card"><h2><i data-icon="chart-column" data-size="16"></i> Mon tableau de bord</h2><div class="stat-mini" id="mystats"></div>'
+      +   '<a class="button secondary-button" style="width:100%;margin-top:12px;justify-content:center" href="/api/agenda.ics"><i data-icon="calendar-days" data-size="15"></i> Télécharger mon agenda (.ics)</a></div>'
+      + '<div class="card"><h2><i data-icon="bookmark" data-size="16"></i> Accès rapides</h2>'
+      +   '<a class="button secondary-button" style="width:100%;margin-bottom:8px;justify-content:center" href="suivis.html">Mes marchés suivis</a>'
+      +   '<a class="button secondary-button" style="width:100%;margin-bottom:8px;justify-content:center" href="radar.html">Radar concurrent</a>'
+      +   '<a class="button secondary-button" style="width:100%;justify-content:center" href="intelligence.html">Intelligence marché</a></div>'
+      + '</div></div>';
+    window.renderIcons(body);
+  }
+
+  function paintSecteurs(){
+    document.getElementById('secchips').innerHTML = SECTEURS.map(function(s){
+      return '<span class="sec-chip'+(sel.indexOf(s)>-1?' on':'')+'" data-s="'+esc(s)+'">'+esc(s)+'</span>';
+    }).join('');
+    var al=document.getElementById('al-sec');
+    al.innerHTML='<option value="">Secteur…</option>'+SECTEURS.map(function(s){return '<option value="'+esc(s)+'">'+esc(s)+'</option>';}).join('');
+    document.querySelectorAll('.sec-chip').forEach(function(c){ c.addEventListener('click',function(){
+      var s=c.getAttribute('data-s'), i=sel.indexOf(s);
+      if(i>-1) sel.splice(i,1); else sel.push(s);
+      c.classList.toggle('on');
+    }); });
+  }
+
+  function loadProfil(){
+    V.api('/api/profil').then(function(d){
+      var p=d.profil||{};
+      sel=(p.secteurs||[]).slice();
+      document.getElementById('bmin').value=p.budget_min||'';
+      document.getElementById('bmax').value=p.budget_max||'';
+      document.getElementById('agr').value=p.agrements||'';
+      document.getElementById('anc').value=p.anciennete_annees||'';
+      document.getElementById('gag').value=p.marches_gagnes||'';
+      paintSecteurs();
+    });
+  }
+  function saveProfil(){
+    var val=function(id){ var v=document.getElementById(id).value; return v===''?null:parseInt(v,10); };
+    V.api('/api/profil',{method:'PUT',body:{
+      secteurs:sel, budget_min:val('bmin'), budget_max:val('bmax'),
+      agrements:document.getElementById('agr').value||null,
+      anciennete_annees:val('anc'), marches_gagnes:val('gag')
+    }}).then(function(){ if(window.toast)window.toast('Profil enregistré ✓'); });
+  }
+
+  function loadStats(){
+    V.api('/api/moi/stats').then(function(s){
+      document.getElementById('mystats').innerHTML=[
+        ['Marchés suivis',s.suivis],['Concurrents surveillés',s.radar],
+        ['Soumissions',s.soumissions],['Taux de réussite',s.taux_reussite!=null?s.taux_reussite+' %':'—']
+      ].map(function(x){return '<div><div class="v">'+x[1]+'</div><div class="l">'+x[0]+'</div></div>';}).join('');
+    });
+  }
+  function loadAlertes(){
+    V.api('/api/alertes').then(function(d){
+      var box=document.getElementById('alertes');
+      box.innerHTML=(d.results||[]).length?(d.results.map(function(a){
+        return '<div class="al-item"><span>'+esc(a.secteur||'Tous secteurs')+' · '+esc(a.canal)+' → '+esc(a.cible)+'</span><button data-al="'+a.id+'"><i data-icon="x" data-size="15"></i></button></div>';
+      }).join('')):'<p class="muted" style="font-size:12.5px">Aucune alerte pour l\'instant.</p>';
+      window.renderIcons(box);
+      box.querySelectorAll('[data-al]').forEach(function(b){ b.addEventListener('click',function(){
+        V.api('/api/alertes/'+b.getAttribute('data-al'),{method:'DELETE'}).then(loadAlertes);
+      }); });
+    });
+  }
+
+  V.me().then(function(u){
+    if(!u){ body.innerHTML='<div style="text-align:center;padding:50px;color:var(--muted)"><h2>Connectez-vous</h2><p>Votre espace est réservé aux membres.</p><div class="vbf-gate-actions" style="justify-content:center"><a class="button" href="login.html">Se connecter</a><a class="button ghost" href="register.html">Créer un compte</a></div></div>'; return; }
+    layout();
+    V.api('/api/stats').then(function(s){ SECTEURS=(s.sectors||[]).map(function(x){return x.sector;}); loadProfil(); });
+    loadStats(); loadAlertes();
+    document.getElementById('save-profil').addEventListener('click', saveProfil);
+    document.getElementById('al-add-btn').addEventListener('click', function(){
+      var sec=document.getElementById('al-sec').value, cible=document.getElementById('al-cible').value.trim();
+      if(cible.length<4){ if(window.toast)window.toast('Email ou numéro requis'); return; }
+      var canal=cible.indexOf('@')>-1?'email':'whatsapp';
+      V.api('/api/alertes',{body:{secteur:sec||null, canal:canal, cible:cible}}).then(function(){ document.getElementById('al-cible').value=''; if(window.toast)window.toast('Alerte créée ✓'); loadAlertes(); });
+    });
+  });
+})();
+</script>
+<script src="assets/shell.js"></script>
+</body>
+</html>

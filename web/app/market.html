@@ -25,6 +25,36 @@
 .src-card b{color:var(--ink)}
 .countdown-card.mkt-mob-only{display:none}
 @media (max-width:1100px){.countdown-card.mkt-desk-only{display:none}.countdown-card.mkt-mob-only{display:block;margin-bottom:4px}}
+/* Scoring « Mes chances » */
+.score-card{margin-top:16px;padding:18px}
+.score-head{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.score-gauge{width:88px;height:88px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative;background:conic-gradient(var(--sc) calc(var(--v)*1%), var(--line) 0)}
+.score-gauge::after{content:'';position:absolute;inset:8px;border-radius:50%;background:var(--bg)}
+.score-gauge .score-num{position:relative;z-index:1;font-size:24px;font-weight:800;line-height:1}
+.score-gauge .score-num small{font-size:11px;color:var(--muted);font-weight:600}
+.verdict-badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;margin-bottom:4px}
+.verdict-badge.go{background:#ecfdf5;color:#047857}
+.verdict-badge.etude{background:#fffbeb;color:#b45309}
+.verdict-badge.nogo{background:var(--danger-light);color:var(--danger)}
+.score-verdict h2{font-size:16px;margin:2px 0}
+.score-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:16px 0}
+.score-metrics > div{background:var(--bg-alt);border-radius:10px;padding:10px 12px}
+.score-metrics span{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;font-weight:700}
+.score-metrics b{font-size:15px}
+.score-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:640px){.score-cols{grid-template-columns:1fr}}
+.score-cols ul{list-style:none;padding:0;margin:0;font-size:12.5px;line-height:1.5}
+.score-cols li{display:flex;gap:7px;align-items:flex-start;margin-bottom:5px}
+.score-cols .forts li::before{content:'✓';color:#047857;font-weight:700}
+.score-cols .vigilance li::before{content:'!';color:var(--danger);font-weight:700}
+.score-proof{margin-top:14px;font-size:13px}
+.score-proof summary{cursor:pointer;font-weight:700;color:var(--primary)}
+.score-proof table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px}
+.score-proof th,.score-proof td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+.score-proof th{color:var(--muted);text-transform:uppercase;font-size:10.5px;letter-spacing:.3px}
+.score-disclaimer{font-size:11.5px;color:var(--muted);margin-top:12px;font-style:italic}
+.score-cta{background:var(--primary-light);border-radius:10px;padding:10px 12px;font-size:12.5px;margin-top:10px}
+.score-cta a{font-weight:700;color:var(--primary)}
 </style>
 </head>
 <body>
@@ -152,6 +182,8 @@
     + '<div class="mkt-kpi"><div class="k"><i data-icon="shield" data-size="13"></i>Caution</div><div class="v" style="font-size:13.5px">'+(m.caution?window.fmtAmount(m.caution):'Non exigée')+'</div></div>'
     + '</div>'
 
+    + '<div id="scoring-panel"></div>'
+
     + '<div class="panel" style="margin-top:16px"><h2 style="display:flex;align-items:center;gap:8px;font-size:15px"><i data-icon="target" data-size="16" style="color:var(--primary)"></i> L’essentiel pour soumissionner</h2>'+essential+'</div>'
 
     + '<div class="mkt-tabs" style="margin-top:18px">'
@@ -217,6 +249,50 @@
         }).then(function(){ busy = false; });
       });
     });
+  })();
+
+  // ---- Scoring « Mes chances » (prouvé par les attributions comparables) ----
+  (function(){
+    var host = document.getElementById('scoring-panel');
+    if(!host) return;
+    var fcfa = window.fmtAmount || function(n){ return (Number(n)||0).toLocaleString('fr-FR')+' FCFA'; };
+    function esc(s){ return (s==null?'':(''+s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+    fetch('/api/scoring/'+encodeURIComponent(m.id), {credentials:'include'})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){
+        if(!d || !d.score){ host.innerHTML=''; return; }
+        var cls = d.verdict==='GO'?'go':(d.verdict==='ETUDE'?'etude':'nogo');
+        var sc = d.verdict==='GO'?'#10b981':(d.verdict==='ETUDE'?'#f59e0b':'#dc2626');
+        var zp = d.zone_prix||{};
+        var zone = (zp.q1&&zp.q3) ? (fcfa(zp.q1)+' – '+fcfa(zp.q3)) : (zp.median?fcfa(zp.median):'—');
+        var metrics = [
+          ['Concurrents attendus', d.concurrents_attendus!=null?('~'+d.concurrents_attendus):'—'],
+          ['Montant probable', d.montant_probable?fcfa(d.montant_probable):'—'],
+          ['Zone de prix gagnante', zone],
+          ['Infructueux (secteur)', d.taux_infructueux_secteur!=null?(d.taux_infructueux_secteur+' %'):'—']
+        ].map(function(x){ return '<div><span>'+x[0]+'</span><b>'+x[1]+'</b></div>'; }).join('');
+        var forts = (d.points_forts||[]).map(function(t){ return '<li>'+esc(t)+'</li>'; }).join('');
+        var vig = (d.points_vigilance||[]).map(function(t){ return '<li>'+esc(t)+'</li>'; }).join('');
+        var proof = (d.comparables||[]).map(function(c){
+          return '<tr><td>'+esc((c.objet||'').slice(0,46))+'</td><td>'+esc(c.gagnant||'—')+'</td><td style="white-space:nowrap">'+(c.montant?fcfa(c.montant):'—')+'</td><td>'+(c.plis||'—')+'</td></tr>';
+        }).join('');
+        var cta = d.personnalise ? '' : '<div class="score-cta"><i data-icon="info" data-size="13"></i> Score générique. <a href="profil.html">Complétez votre profil</a> pour un score adapté à votre entreprise.</div>';
+        host.innerHTML =
+          '<section class="panel score-card">'
+          + '<div class="score-head">'
+          + '<div class="score-gauge" style="--v:'+d.score+';--sc:'+sc+'"><div class="score-num">'+d.score+'<small>/100</small></div></div>'
+          + '<div class="score-verdict"><span class="verdict-badge '+cls+'">'+esc(d.verdict_label)+'</span>'
+          + '<h2>Vos chances sur ce marché</h2>'
+          + '<p class="muted" style="font-size:12.5px;margin:0">'+(d.personnalise?'Estimation adaptée à votre profil.':'Estimation générique (non personnalisée).')+'</p></div>'
+          + '</div>'
+          + cta
+          + '<div class="score-metrics">'+metrics+'</div>'
+          + '<div class="score-cols"><ul class="forts">'+forts+'</ul><ul class="vigilance">'+vig+'</ul></div>'
+          + (proof ? '<details class="score-proof"><summary>Preuve : '+ d.comparables.length +' attributions comparables réelles</summary><table><thead><tr><th>Objet</th><th>Gagnant</th><th>Montant</th><th>Plis</th></tr></thead><tbody>'+proof+'</tbody></table></details>' : '')
+          + '<p class="score-disclaimer">'+esc(d.disclaimer||'')+'</p>'
+          + '</section>';
+        window.renderIcons(host);
+      }).catch(function(){ host.innerHTML=''; });
   })();
 })();
 </script>

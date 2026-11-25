@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radar concurrent · VEILLE BF</title>
+<link rel="icon" href="assets/logo.svg">
+<link rel="stylesheet" href="assets/app.css">
+<link rel="stylesheet" href="assets/app-shell.css">
+<link rel="stylesheet" href="assets/saas.css">
+<style>
+.radar-add{display:flex;gap:8px;margin:14px 0 20px}
+.radar-add input{flex:1;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:14px}
+.rc-card{display:flex;align-items:center;gap:14px;background:var(--bg);border:1px solid var(--line);border-radius:13px;padding:14px 16px;margin-bottom:10px}
+.rc-ava{width:42px;height:42px;border-radius:11px;background:var(--primary-light);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0}
+.rc-main{flex:1;min-width:0}
+.rc-nom{font-weight:700;font-size:14px}
+.rc-meta{font-size:12.5px;color:var(--muted);margin-top:2px}
+.rc-x{background:none;border:none;color:var(--muted);cursor:pointer;padding:6px;border-radius:8px;line-height:0}
+.rc-x:hover{background:var(--danger-light);color:var(--danger)}
+.radar-empty{text-align:center;padding:48px 20px;color:var(--muted)}
+.radar-empty .es-ico{width:60px;height:60px;border-radius:16px;background:var(--primary-light);color:var(--primary);display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+.radar-empty strong{display:block;color:var(--ink);font-size:16px;margin-bottom:6px}
+</style>
+</head>
+<body>
+<div id="app" data-page="radar"></div>
+<main class="main" id="main-content">
+  <section class="markets-hero" style="margin-bottom:10px">
+    <p class="eyebrow">Surveillance de la concurrence</p>
+    <h1>Radar concurrent</h1>
+    <p class="hero-copy">Ajoutez les entreprises qui vous font face. Dès qu'une d'elles remporte un marché, vous recevez une alerte dans votre cloche 🔔.</p>
+  </section>
+  <div id="radar-body"><p class="muted" style="text-align:center;padding:30px">Chargement…</p></div>
+  <div class="app-footer"><span>Profils issus des résultats d'attribution de la DGCMEF.</span><span>© 2026 Veille BF</span></div>
+</main>
+
+<script src="assets/icons.js"></script>
+<script src="assets/session.js"></script>
+<script>
+(function(){
+  var V=window.VBF, body=document.getElementById('radar-body');
+  function esc(s){ return (s==null?'':(''+s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function fcfa(n){ n=Number(n)||0; return n?n.toLocaleString('fr-FR')+' FCFA':''; }
+  function initials(s){ s=(s||'').trim(); return (s.slice(0,2)||'??').toUpperCase(); }
+
+  function render(items){
+    var add='<div class="radar-add"><input id="rc-input" placeholder="Nom exact d\'une entreprise (ex. attributaire vu dans les résultats)…"><button class="button" id="rc-add"><i data-icon="plus" data-size="15"></i> Surveiller</button></div>';
+    var list;
+    if(!items.length){
+      list='<div class="radar-empty"><div class="es-ico"><i data-icon="radar" data-size="26"></i></div><strong>Aucun concurrent surveillé</strong>Ajoutez une entreprise ci-dessus. Astuce : copiez un nom d\'attributaire depuis la page <a class="link" href="entreprises.html">Entreprises</a> ou un résultat.</div>';
+    } else {
+      list=items.map(function(r){
+        var last=r.dernier_gain;
+        var meta=(r.marches_gagnes||0)+' marché'+(r.marches_gagnes>1?'s':'')+' gagné'+(r.marches_gagnes>1?'s':'')+' · '+(r.soumissions||0)+' soumission'+(r.soumissions>1?'s':'');
+        var lastline=last?('<div class="rc-meta">Dernier gain : '+esc((last.objet||'').slice(0,60))+(last.date?' · '+esc(last.date):'')+'</div>'):'';
+        return '<div class="rc-card"><div class="rc-ava">'+initials(r.entreprise_nom)+'</div>'
+          +'<div class="rc-main"><div class="rc-nom">'+esc(r.entreprise_nom)+'</div><div class="rc-meta">'+meta+'</div>'+lastline+'</div>'
+          +'<button class="rc-x" title="Retirer" data-rm="'+esc(r.entreprise_nom)+'"><i data-icon="x" data-size="16"></i></button></div>';
+      }).join('');
+    }
+    body.innerHTML=add+list;
+    window.renderIcons(body);
+    document.getElementById('rc-add').addEventListener('click', addOne);
+    document.getElementById('rc-input').addEventListener('keydown',function(e){ if(e.key==='Enter') addOne(); });
+    body.querySelectorAll('[data-rm]').forEach(function(b){ b.addEventListener('click',function(){
+      V.api('/api/radar/'+encodeURIComponent(b.getAttribute('data-rm')),{method:'DELETE'}).then(load);
+    }); });
+  }
+  function addOne(){
+    var inp=document.getElementById('rc-input'), nom=inp.value.trim(); if(nom.length<2) return;
+    V.api('/api/radar',{body:{entreprise_nom:nom}}).then(function(){ inp.value=''; if(window.toast)window.toast('Ajouté au radar ✓'); load(); })
+      .catch(function(e){ if(window.toast)window.toast((e.data&&e.data.detail)||'Entreprise introuvable'); });
+  }
+  function load(){ V.api('/api/radar').then(function(d){ render(d.results||[]); }); }
+
+  V.me().then(function(u){
+    if(!u){ body.innerHTML='<div class="radar-empty"><div class="es-ico"><i data-icon="radar" data-size="26"></i></div><strong>Connectez-vous</strong>Le radar concurrent est réservé aux membres.<div class="vbf-gate-actions" style="justify-content:center;margin-top:14px"><a class="button" href="login.html">Se connecter</a><a class="button ghost" href="register.html">Créer un compte</a></div></div>'; window.renderIcons(body); return; }
+    load();
+  });
+})();
+</script>
+<script src="assets/shell.js"></script>
+</body>
+</html>

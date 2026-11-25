@@ -9,6 +9,15 @@
 <link rel="stylesheet" href="assets/app.css">
 <link rel="stylesheet" href="assets/app-shell.css">
 <link rel="stylesheet" href="assets/saas.css">
+<style>
+.alert-capture{background:var(--primary-light);border-radius:18px;padding:28px;display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:center}
+@media(max-width:760px){.alert-capture{grid-template-columns:1fr}}
+.alert-capture h2{font-size:22px;margin:6px 0}
+.alert-capture p{color:var(--muted);margin:0}
+.alert-form{display:flex;flex-direction:column;gap:10px}
+.alert-form select,.alert-form input{padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:14px}
+.alert-msg{font-size:13px;margin:0;color:var(--primary);font-weight:700}
+</style>
 </head>
 <body>
 <header class="pub-topbar">
@@ -82,6 +91,23 @@
   <div class="plans-grid" id="plans" style="margin-top:0"><p class="muted" style="grid-column:1/-1;text-align:center">Chargement des offres…</p></div>
   <div class="compare" id="compare"></div>
   <p style="text-align:center;margin-top:24px"><a class="button" href="offres">Comparer en détail & s'abonner</a></p>
+</section>
+
+<!-- ALERTE GRATUITE (acquisition) -->
+<section class="lp-section" style="padding-top:0">
+  <div class="alert-capture">
+    <div>
+      <span class="eyebrow"><i data-icon="bell" data-size="14"></i> Gratuit · sans attendre</span>
+      <h2>Recevez les nouveaux marchés de votre secteur</h2>
+      <p>Choisissez votre secteur et votre canal — on vous envoie les marchés correspondants, par email ou WhatsApp.</p>
+    </div>
+    <form id="alert-form" class="alert-form">
+      <select id="al-secteur"><option value="">Votre secteur…</option></select>
+      <input id="al-cible" placeholder="Votre email ou numéro WhatsApp" required>
+      <button class="button" type="submit">Recevoir mes alertes</button>
+      <p class="alert-msg" id="al-msg"></p>
+    </form>
+  </div>
 </section>
 
 <!-- CTA FINALE -->
@@ -178,6 +204,22 @@
     document.querySelectorAll('[data-auth-only]').forEach(function(x){ x.hidden=!!u; });
     document.querySelectorAll('[data-user-only]').forEach(function(x){ x.hidden=!u; });
   });
+
+  // --- Alerte gratuite (acquisition) ---
+  var alSec = document.getElementById('al-secteur');
+  if (alSec) {
+    window.VBF.api('/api/stats').then(function(s){
+      (s.sectors||[]).forEach(function(x){ var o=document.createElement('option'); o.value=x.sector; o.textContent=x.sector; alSec.appendChild(o); });
+    }).catch(function(){});
+    document.getElementById('alert-form').addEventListener('submit', function(e){
+      e.preventDefault();
+      var cible=document.getElementById('al-cible').value.trim(); if(cible.length<4) return;
+      var canal=cible.indexOf('@')>-1?'email':'whatsapp';
+      window.VBF.api('/api/alertes',{body:{secteur:alSec.value||null, canal:canal, cible:cible}})
+        .then(function(){ document.getElementById('al-msg').textContent='✓ C\'est fait ! Vous recevrez les marchés de votre secteur.'; document.getElementById('al-cible').value=''; })
+        .catch(function(){ document.getElementById('al-msg').textContent='Une erreur est survenue, réessayez.'; });
+    });
+  }
 
   window.renderIcons && window.renderIcons();
 })();
