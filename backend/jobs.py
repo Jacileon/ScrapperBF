@@ -166,7 +166,33 @@ def envoyer_alertes_du_jour(limit_par_alerte: int = 5) -> dict:
     return {"alertes": len(alertes), "envois": envois}
 
 
+def envoyer_digest_hebdo() -> dict:
+    """Résumé hebdomadaire par utilisateur ayant un contact d'alerte."""
+    conn = get_db()
+    envois = 0
+    try:
+        cibles = conn.execute(
+            """SELECT user_id, canal, cible FROM alertes
+               WHERE user_id IS NOT NULL AND cible IS NOT NULL GROUP BY user_id"""
+        ).fetchall()
+        for c in cibles:
+            uid = c["user_id"]
+            suivis = conn.execute("SELECT COUNT(*) FROM suivis WHERE user_id=?", (uid,)).fetchone()[0]
+            radar = conn.execute("SELECT COUNT(*) FROM radar_concurrents WHERE user_id=?", (uid,)).fetchone()[0]
+            notifs = conn.execute(
+                "SELECT COUNT(*) FROM notifications WHERE user_id=? AND lu=0", (uid,)
+            ).fetchone()[0]
+            msg = (f"Votre semaine Veille BF : {suivis} marché(s) suivi(s), "
+                   f"{radar} concurrent(s) surveillé(s), {notifs} notification(s) non lue(s).")
+            if notif.send(c["canal"] or "log", c["cible"], "Veille BF — votre semaine", msg).get("ok"):
+                envois += 1
+    finally:
+        conn.close()
+    return {"cibles": len(cibles), "envois": envois}
+
+
 if __name__ == "__main__":
     n = generate_all()
     print(f"[jobs] {n} notification(s) générée(s).")
     print("[jobs] alertes:", envoyer_alertes_du_jour())
+    print("[jobs] digest hebdo:", envoyer_digest_hebdo())

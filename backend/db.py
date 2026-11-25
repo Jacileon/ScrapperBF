@@ -226,10 +226,35 @@ CREATE TABLE IF NOT EXISTS alertes (
 CREATE INDEX IF NOT EXISTS idx_suivis_user ON suivis(user_id);
 CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, lu);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_notif_unique ON notifications(user_id, type, resultat_id);
+-- Groupements : entreprises ouvertes à répondre en groupement (matching partenaires).
+CREATE TABLE IF NOT EXISTS groupement_profils (
+    user_id INTEGER PRIMARY KEY,
+    secteurs TEXT,                           -- JSON
+    agrements TEXT,
+    contact TEXT,                            -- email / téléphone affiché aux partenaires
+    message TEXT,                            -- présentation courte
+    actif INTEGER NOT NULL DEFAULT 1,
+    cree_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Coffre documentaire : documents de l'entreprise (stockés sur disque).
+CREATE TABLE IF NOT EXISTS coffre_documents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    nom TEXT NOT NULL,
+    type TEXT,
+    taille INTEGER,
+    chemin TEXT NOT NULL,
+    cree_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE INDEX IF NOT EXISTS idx_radar_user ON radar_concurrents(user_id);
 CREATE INDEX IF NOT EXISTS idx_dossiers_user ON dossiers(user_id);
 CREATE INDEX IF NOT EXISTS idx_dossier_pieces ON dossier_pieces(dossier_id);
 CREATE INDEX IF NOT EXISTS idx_alertes_user ON alertes(user_id);
+CREATE INDEX IF NOT EXISTS idx_coffre_user ON coffre_documents(user_id);
 """
 
 

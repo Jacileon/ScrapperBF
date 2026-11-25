@@ -21,11 +21,16 @@ from backend.db import init_saas_schema
 from backend.routes_auth import router as auth_router
 from backend.routes_billing import router as billing_router
 from backend.routes_alertes import router as alertes_router
+from backend.routes_api import router as api_v1_router
+from backend.routes_coffre import router as coffre_router
 from backend.routes_data import router as data_router
 from backend.routes_dossiers import router as dossiers_router
+from backend.routes_equipe import router as equipe_router
+from backend.routes_groupements import router as groupements_router
 from backend.routes_intel import router as intel_router
 from backend.routes_notifications import router as notifications_router
 from backend.routes_profil import router as profil_router
+from backend.routes_public import router as public_router
 from backend.routes_radar import router as radar_router
 from backend.routes_suivis import router as suivis_router
 
@@ -61,6 +66,11 @@ app.include_router(intel_router)
 app.include_router(radar_router)
 app.include_router(dossiers_router)
 app.include_router(alertes_router)
+app.include_router(groupements_router)
+app.include_router(equipe_router)
+app.include_router(coffre_router)
+app.include_router(api_v1_router)
+app.include_router(public_router)
 
 
 # ----------------- Pages & redirections -----------------

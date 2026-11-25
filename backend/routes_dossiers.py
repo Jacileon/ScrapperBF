@@ -15,6 +15,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 
+from backend import pdfgen
 from backend.db import get_db
 from backend.deps import require_user
 
@@ -194,6 +195,63 @@ def delete_piece(piece_id: int, user: dict = Depends(require_user)):
         return {"ok": True}
     finally:
         conn.close()
+
+
+@router.get("/dossiers/{avis_id}/pdf")
+def dossier_pdf(avis_id: str, user: dict = Depends(require_user)):
+    """Génère une fiche de soumission PDF (récap marché + checklist)."""
+    conn = get_db()
+    try:
+        a = conn.execute(
+            """SELECT objet_marche, autorite_contractante, reference_dossier,
+                      date_limite_depot, budget_previsionnel_fcfa, lieu_depot_offres
+               FROM annonces_avis WHERE id = ?""", (avis_id,),
+        ).fetchone()
+        if not a:
+            raise HTTPException(status_code=404, detail="Marché introuvable.")
+        did = _dossier_id(conn, user["id"], avis_id)
+        pieces = []
+        if did:
+            pieces = [dict(p) for p in conn.execute(
+                "SELECT libelle, coche FROM dossier_pieces WHERE dossier_id = ? ORDER BY ordre, id", (did,),
+            ).fetchall()]
+    finally:
+        conn.close()
+
+    societe = user.get("organisation") or user.get("nom") or user.get("email") or "Votre entreprise"
+
+    def fcfa(n):
+        try:
+            return f"{int(n):,}".replace(",", " ") + " FCFA"
+        except Exception:
+            return "Non précisé"
+
+    lines = [
+        {"text": "FICHE DE SOUMISSION", "size": 17, "bold": True},
+        {"text": societe, "size": 12, "gap": 6},
+        {"text": "Marché visé", "size": 13, "bold": True, "gap": 14},
+        {"text": a["objet_marche"] or "—", "size": 11, "gap": 2},
+        {"text": "Autorité : " + (a["autorite_contractante"] or "—"), "gap": 4},
+        {"text": "Référence : " + (a["reference_dossier"] or "—")},
+        {"text": "Date limite de dépôt : " + (a["date_limite_depot"] or "—")},
+        {"text": "Budget prévisionnel : " + fcfa(a["budget_previsionnel_fcfa"])},
+        {"text": "Lieu de dépôt : " + (a["lieu_depot_offres"] or "Selon le dossier")},
+        {"text": "Pièces à fournir", "size": 13, "bold": True, "gap": 16},
+    ]
+    if pieces:
+        for p in pieces:
+            mark = "[X]" if p["coche"] else "[  ]"
+            lines.append({"text": f"{mark}  {p['libelle']}", "gap": 2})
+    else:
+        for lib in PIECES_DEFAUT:
+            lines.append({"text": f"[  ]  {lib}", "gap": 2})
+    lines.append({"text": "Document généré par Veille BF — à vérifier avec le dossier d'appel d'offres officiel.",
+                  "size": 9, "gap": 20})
+
+    pdf = pdfgen.build_pdf(lines)
+    fname = "fiche-soumission.pdf"
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f"attachment; filename={fname}"})
 
 
 # --------------------------------------------------------------------------- #

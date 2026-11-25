@@ -79,3 +79,6 @@ manifeste_*.json
 # Logs & audits (générés)
 *.log
 *.jsonl
+
+# Coffre documentaire (fichiers uploadés par les utilisateurs)
+/data/

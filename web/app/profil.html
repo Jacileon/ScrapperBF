@@ -67,6 +67,14 @@
       + '<div class="card"><h2><i data-icon="bell" data-size="16"></i> Mes alertes</h2><p class="sub">Recevez les nouveaux marchés d\'un secteur.</p><div id="alertes"></div>'
       +   '<div class="al-add"><select id="al-sec"><option value="">Secteur…</option></select><input id="al-cible" placeholder="Email ou numéro"><button class="button" id="al-add-btn">Ajouter</button></div>'
       + '</div>'
+      + '<div class="card"><h2><i data-icon="users" data-size="16"></i> Groupements</h2><p class="sub">Rendez-vous visible pour répondre en groupement (vos secteurs du profil).</p>'
+      +   '<label class="al-item" style="border:none;cursor:pointer"><span>Je suis ouvert aux groupements</span><input type="checkbox" id="gp-actif"></label>'
+      +   '<div class="fld"><label>Contact affiché aux partenaires</label><input id="gp-contact" placeholder="Email ou téléphone"></div>'
+      +   '<div class="fld"><label>Présentation courte</label><input id="gp-msg" placeholder="Ex. BTP, agréée T2, basée à Ouaga"></div>'
+      +   '<button class="button secondary-button" id="gp-save"><i data-icon="check" data-size="14"></i> Enregistrer</button></div>'
+      + '<div class="card"><h2><i data-icon="upload" data-size="16"></i> Coffre documentaire</h2><p class="sub">Vos pièces administratives, prêtes à joindre (max 5 Mo).</p>'
+      +   '<input type="file" id="cf-file" style="font-size:13px;margin-bottom:10px"><button class="button secondary-button" id="cf-up"><i data-icon="upload" data-size="14"></i> Téléverser</button>'
+      +   '<div id="cf-list" style="margin-top:12px"></div></div>'
       + '</div><div>'
       + '<div class="card"><h2><i data-icon="chart-column" data-size="16"></i> Mon tableau de bord</h2><div class="stat-mini" id="mystats"></div>'
       +   '<a class="button secondary-button" style="width:100%;margin-top:12px;justify-content:center" href="/api/agenda.ics"><i data-icon="calendar-days" data-size="15"></i> Télécharger mon agenda (.ics)</a></div>'
@@ -74,6 +82,7 @@
       +   '<a class="button secondary-button" style="width:100%;margin-bottom:8px;justify-content:center" href="suivis.html">Mes marchés suivis</a>'
       +   '<a class="button secondary-button" style="width:100%;margin-bottom:8px;justify-content:center" href="radar.html">Radar concurrent</a>'
       +   '<a class="button secondary-button" style="width:100%;justify-content:center" href="intelligence.html">Intelligence marché</a></div>'
+      + '<div class="card"><h2><i data-icon="users" data-size="16"></i> Mon équipe</h2><p class="sub">Invitez vos collaborateurs (offre Entreprise).</p><div id="eq-body"></div></div>'
       + '</div></div>';
     window.renderIcons(body);
   }
@@ -133,12 +142,75 @@
     });
   }
 
+  function loadGroupement(){
+    V.api('/api/groupements/moi').then(function(d){
+      document.getElementById('gp-actif').checked = d.inscrit ? !!d.actif : false;
+      document.getElementById('gp-contact').value = d.contact||'';
+      document.getElementById('gp-msg').value = d.message||'';
+    }).catch(function(){});
+  }
+  function saveGroupement(){
+    V.api('/api/groupements/moi',{method:'PUT',body:{
+      secteurs: sel, contact: document.getElementById('gp-contact').value||null,
+      message: document.getElementById('gp-msg').value||null, actif: document.getElementById('gp-actif').checked
+    }}).then(function(){ if(window.toast)window.toast('Visibilité groupement enregistrée ✓'); });
+  }
+  function fmtSize(n){ n=Number(n)||0; return n>1048576?(n/1048576).toFixed(1)+' Mo':Math.round(n/1024)+' Ko'; }
+  function loadCoffre(){
+    V.api('/api/coffre').then(function(d){
+      var box=document.getElementById('cf-list');
+      box.innerHTML=(d.results||[]).length?d.results.map(function(f){
+        return '<div class="al-item"><a href="/api/coffre/'+f.id+'/download">'+esc(f.nom)+'</a><span>'+fmtSize(f.taille)+' <button data-cf="'+f.id+'"><i data-icon="x" data-size="14"></i></button></span></div>';
+      }).join(''):'<p class="muted" style="font-size:12.5px">Aucun document.</p>';
+      window.renderIcons(box);
+      box.querySelectorAll('[data-cf]').forEach(function(b){ b.addEventListener('click',function(){
+        V.api('/api/coffre/'+b.getAttribute('data-cf'),{method:'DELETE'}).then(loadCoffre);
+      }); });
+    });
+  }
+  function uploadCoffre(){
+    var f=document.getElementById('cf-file').files[0]; if(!f){ if(window.toast)window.toast('Choisissez un fichier'); return; }
+    if(f.size>5*1048576){ if(window.toast)window.toast('Fichier trop volumineux (max 5 Mo)'); return; }
+    var rd=new FileReader();
+    rd.onload=function(){
+      var b64=(''+rd.result).split(',')[1];
+      V.api('/api/coffre',{body:{nom:f.name, type:f.type||'application/octet-stream', contenu_base64:b64}})
+        .then(function(){ document.getElementById('cf-file').value=''; if(window.toast)window.toast('Document ajouté ✓'); loadCoffre(); })
+        .catch(function(){ if(window.toast)window.toast('Échec du téléversement'); });
+    };
+    rd.readAsDataURL(f);
+  }
+  function loadEquipe(){
+    var box=document.getElementById('eq-body');
+    V.api('/api/equipe').then(function(d){
+      var list=(d.results||[]).map(function(m){ return '<div class="al-item"><span>'+esc(m.nom||m.email)+' · '+esc(m.role)+'</span><button data-eq="'+m.member_user_id+'"><i data-icon="x" data-size="14"></i></button></div>'; }).join('');
+      box.innerHTML=(list||'<p class="muted" style="font-size:12.5px">Aucun membre.</p>')
+        +'<div class="al-add" style="grid-template-columns:1fr auto"><input id="eq-email" placeholder="Email du collaborateur"><button class="button" id="eq-invite">Inviter</button></div>'
+        +'<p class="muted" style="font-size:11px;margin-top:6px">'+(d.total||0)+'/'+(d.max||5)+' membres</p>';
+      window.renderIcons(box);
+      document.getElementById('eq-invite').addEventListener('click', function(){
+        var em=document.getElementById('eq-email').value.trim(); if(em.indexOf('@')<0) return;
+        V.api('/api/equipe',{body:{email:em}}).then(function(){ if(window.toast)window.toast('Membre ajouté ✓'); loadEquipe(); })
+          .catch(function(e){ if(window.toast)window.toast((e.data&&e.data.detail)||'Invitation impossible'); });
+      });
+      box.querySelectorAll('[data-eq]').forEach(function(b){ b.addEventListener('click',function(){
+        V.api('/api/equipe/'+b.getAttribute('data-eq'),{method:'DELETE'}).then(loadEquipe);
+      }); });
+    }).catch(function(e){
+      box.innerHTML = (e.status===402)
+        ? '<p class="muted" style="font-size:12.5px">Réservé à l\'offre Entreprise. <a href="pricing.html">Voir les offres</a></p>'
+        : '<p class="muted" style="font-size:12.5px">Indisponible.</p>';
+    });
+  }
+
   V.me().then(function(u){
     if(!u){ body.innerHTML='<div style="text-align:center;padding:50px;color:var(--muted)"><h2>Connectez-vous</h2><p>Votre espace est réservé aux membres.</p><div class="vbf-gate-actions" style="justify-content:center"><a class="button" href="login.html">Se connecter</a><a class="button ghost" href="register.html">Créer un compte</a></div></div>'; return; }
     layout();
     V.api('/api/stats').then(function(s){ SECTEURS=(s.sectors||[]).map(function(x){return x.sector;}); loadProfil(); });
-    loadStats(); loadAlertes();
+    loadStats(); loadAlertes(); loadGroupement(); loadCoffre(); loadEquipe();
     document.getElementById('save-profil').addEventListener('click', saveProfil);
+    document.getElementById('gp-save').addEventListener('click', saveGroupement);
+    document.getElementById('cf-up').addEventListener('click', uploadCoffre);
     document.getElementById('al-add-btn').addEventListener('click', function(){
       var sec=document.getElementById('al-sec').value, cible=document.getElementById('al-cible').value.trim();
       if(cible.length<4){ if(window.toast)window.toast('Email ou numéro requis'); return; }
