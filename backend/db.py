@@ -162,9 +162,74 @@ CREATE INDEX IF NOT EXISTS idx_subs_user ON subscriptions(user_id);
 CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(user_id);
 CREATE INDEX IF NOT EXISTS idx_payments_ref ON payments(reference_interne);
 CREATE INDEX IF NOT EXISTS idx_apikeys_user ON api_keys(user_id);
+-- Profil de candidature de l'utilisateur (personnalisation + scoring).
+CREATE TABLE IF NOT EXISTS profils_candidature (
+    user_id INTEGER PRIMARY KEY,
+    secteurs TEXT,                           -- JSON : liste de secteurs
+    region TEXT,
+    budget_min INTEGER,
+    budget_max INTEGER,
+    agrements TEXT,                           -- texte libre / JSON
+    anciennete_annees INTEGER,
+    en_groupement INTEGER NOT NULL DEFAULT 0,
+    marches_soumis INTEGER NOT NULL DEFAULT 0,
+    marches_gagnes INTEGER NOT NULL DEFAULT 0,
+    maj_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Radar concurrent : entreprises surveillées par l'utilisateur.
+CREATE TABLE IF NOT EXISTS radar_concurrents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    entreprise_nom TEXT NOT NULL,            -- nom_canonique de resultats_soumissionnaires
+    cree_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, entreprise_nom),
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Suivi de dossier (préparation de soumission) + pièces à cocher.
+CREATE TABLE IF NOT EXISTS dossiers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    avis_id TEXT NOT NULL,
+    statut TEXT NOT NULL DEFAULT 'a_etudier', -- a_etudier | en_preparation | depose | gagne | perdu
+    cree_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    maj_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, avis_id),
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS dossier_pieces (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dossier_id INTEGER NOT NULL,
+    libelle TEXT NOT NULL,
+    coche INTEGER NOT NULL DEFAULT 0,
+    ordre INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY(dossier_id) REFERENCES dossiers(id) ON DELETE CASCADE
+);
+
+-- Abonnements d'alertes (secteur/type/région) + canal d'envoi.
+CREATE TABLE IF NOT EXISTS alertes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,                         -- NULL = alerte publique (sans compte)
+    secteur TEXT,
+    type_marche TEXT,
+    region TEXT,
+    canal TEXT NOT NULL DEFAULT 'email',     -- email | whatsapp
+    cible TEXT,                              -- email ou numéro
+    actif INTEGER NOT NULL DEFAULT 1,
+    cree_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE INDEX IF NOT EXISTS idx_suivis_user ON suivis(user_id);
 CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, lu);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_notif_unique ON notifications(user_id, type, resultat_id);
+CREATE INDEX IF NOT EXISTS idx_radar_user ON radar_concurrents(user_id);
+CREATE INDEX IF NOT EXISTS idx_dossiers_user ON dossiers(user_id);
+CREATE INDEX IF NOT EXISTS idx_dossier_pieces ON dossier_pieces(dossier_id);
+CREATE INDEX IF NOT EXISTS idx_alertes_user ON alertes(user_id);
 """
 
 

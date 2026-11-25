@@ -20,8 +20,13 @@ from backend.config import CORS_ORIGINS, WEB_DIR
 from backend.db import init_saas_schema
 from backend.routes_auth import router as auth_router
 from backend.routes_billing import router as billing_router
+from backend.routes_alertes import router as alertes_router
 from backend.routes_data import router as data_router
+from backend.routes_dossiers import router as dossiers_router
+from backend.routes_intel import router as intel_router
 from backend.routes_notifications import router as notifications_router
+from backend.routes_profil import router as profil_router
+from backend.routes_radar import router as radar_router
 from backend.routes_suivis import router as suivis_router
 
 app = FastAPI(
@@ -51,6 +56,11 @@ app.include_router(billing_router)
 app.include_router(data_router)
 app.include_router(suivis_router)
 app.include_router(notifications_router)
+app.include_router(profil_router)
+app.include_router(intel_router)
+app.include_router(radar_router)
+app.include_router(dossiers_router)
+app.include_router(alertes_router)
 
 
 # ----------------- Pages & redirections -----------------

@@ -16,7 +16,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from backend import alertes_resultats
+from backend import jobs
 from backend.db import get_db
 from backend.deps import require_user
 
@@ -31,7 +31,7 @@ class ReadIn(BaseModel):
 def list_notifications(user: dict = Depends(require_user)):
     # Génération paresseuse (ne doit jamais casser l'affichage du fil).
     try:
-        alertes_resultats.generate_for_user(user["id"])
+        jobs.generate_for_user(user["id"])
     except Exception:
         pass
 
