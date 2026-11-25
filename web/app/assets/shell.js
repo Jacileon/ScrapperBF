@@ -6,6 +6,7 @@
   var NAV = [
     {href:'dashboard.html', key:'dashboard', icon:'house', label:'Accueil'},
     {href:'markets.html', key:'markets', icon:'briefcase-business', label:'Marchés publics'},
+    {href:'suivis.html', key:'suivis', icon:'bookmark', label:'Mes marchés'},
     {href:'resultats.html', key:'resultats', icon:'trophy', label:'Résultats', feature:'resultats'},
     {href:'entreprises.html', key:'entreprises', icon:'building2', label:'Entreprises', feature:'entreprises'},
     {href:'authorities.html', key:'authorities', icon:'landmark', label:'Autorités'},
@@ -49,6 +50,10 @@
     +'<button class="kbar-trigger" type="button" id="kbar-open"><i data-icon="search" data-size="16"></i> Rechercher un marché, une autorité… <kbd>Ctrl K</kbd></button>'
     +'</div>'
     +'<button class="icon-btn" id="theme-toggle" title="Changer de thème" type="button"><i data-icon="moon" data-size="19"></i></button>'
+    +'<div class="notif-wrap" id="notif-wrap" hidden>'
+    +'<button class="icon-btn" id="notif-bell" title="Notifications" type="button"><i data-icon="bell" data-size="19"></i><span class="notif-badge" id="notif-badge" hidden>0</span></button>'
+    +'<div class="notif-panel" id="notif-panel" hidden></div>'
+    +'</div>'
     +'<div id="user-slot"></div>'
     +'</header>'
   );
@@ -137,6 +142,61 @@
 
   window.renderIcons();
 
+  // ---- Cloche de notifications (alerte résultat « boucle fermée ») ----
+  var notifStyle = document.createElement('style');
+  notifStyle.textContent =
+    '.notif-wrap{position:relative}'
+    +'#notif-bell{position:relative}'
+    +'.notif-badge{position:absolute;top:-3px;right:-3px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--danger,#dc2626);color:#fff;font-size:10px;font-weight:700;line-height:16px;text-align:center}'
+    +'.notif-panel{position:absolute;top:46px;right:0;width:340px;max-width:92vw;max-height:70vh;overflow-y:auto;background:var(--bg,#fff);border:1px solid var(--line,#e2e8f0);border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,.18);z-index:120;padding:6px}'
+    +'.notif-head{font-weight:700;font-size:13px;padding:10px 12px 8px}'
+    +'.notif-item{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:10px;color:var(--ink,#0f172a)}'
+    +'.notif-item:hover{background:var(--primary-light)}'
+    +'.notif-item.unread{background:var(--primary-light)}'
+    +'.notif-item .ni-ico{width:30px;height:30px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#ecfdf5;color:#047857}'
+    +'.notif-item .ni-title{font-weight:700;font-size:12.5px}'
+    +'.notif-item .ni-msg{font-size:12px;color:var(--muted);margin-top:1px;line-height:1.35}'
+    +'.notif-item .ni-time{font-size:10.5px;color:var(--muted);margin-top:3px}'
+    +'.notif-empty{padding:26px 16px;text-align:center;color:var(--muted);font-size:13px;line-height:1.5}'
+    +'.notif-all{display:block;text-align:center;font-size:12.5px;font-weight:700;color:var(--primary);padding:10px}';
+  document.head.appendChild(notifStyle);
+
+  function initNotifs(){
+    var wrap=document.getElementById('notif-wrap'); if(!wrap) return;
+    wrap.hidden=false;
+    var bell=document.getElementById('notif-bell'),
+        panel=document.getElementById('notif-panel'),
+        badge=document.getElementById('notif-badge');
+    function esc(s){ return (s==null?'':(''+s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+    function fmtDate(s){ if(!s) return ''; return (''+s).slice(0,16).replace('T',' '); }
+    function render(d){
+      var items=(d&&d.notifications)||[], unread=(d&&d.non_lus)||0;
+      if(unread>0){ badge.textContent=unread>9?'9+':unread; badge.hidden=false; } else { badge.hidden=true; }
+      if(!items.length){ panel.innerHTML='<div class="notif-empty">Aucune notification pour le moment.<br>Suivez des marchés pour être prévenu dès la publication des résultats.</div>'; return; }
+      panel.innerHTML='<div class="notif-head">Notifications</div>'+items.map(function(n){
+        var href=n.avis_id?('market.html?id='+encodeURIComponent(n.avis_id)):'suivis.html';
+        return '<a class="notif-item'+(n.lu?'':' unread')+'" href="'+href+'">'
+          +'<div class="ni-ico"><i data-icon="trophy" data-size="15"></i></div>'
+          +'<div style="min-width:0"><div class="ni-title">'+esc(n.titre||'Résultat publié')+'</div>'
+          +'<div class="ni-msg">'+esc(n.message||'')+'</div>'
+          +'<div class="ni-time">'+esc(fmtDate(n.cree_le))+'</div></div></a>';
+      }).join('')+'<a class="notif-all" href="suivis.html">Voir mes marchés suivis</a>';
+      window.renderIcons(panel);
+    }
+    function load(){ fetch('/api/notifications',{credentials:'include'}).then(function(r){return r.ok?r.json():null;}).then(function(d){ if(d) render(d); }).catch(function(){}); }
+    bell.addEventListener('click', function(e){
+      e.stopPropagation();
+      var willOpen=panel.hidden;
+      panel.hidden=!willOpen;
+      if(willOpen && !badge.hidden){
+        fetch('/api/notifications/read',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:'{}'})
+          .then(function(){ badge.hidden=true; panel.querySelectorAll('.notif-item.unread').forEach(function(x){ x.classList.remove('unread'); }); }).catch(function(){});
+      }
+    });
+    document.addEventListener('click', function(e){ if(!wrap.contains(e.target)) panel.hidden=true; });
+    load();
+  }
+
   // ---- Session : utilisateur réel, offre, déconnexion, verrouillage ----
   var FEAT_PLAN = {}; // features du plan courant
 
@@ -217,6 +277,7 @@
         renderUser(u);
         var entitled = function(f){ return !!FEAT_PLAN[f]; };
         markLocks(entitled);
+        initNotifs();
         if(requires && !entitled(requires)) gateOverlay(true, requires);
       } else {
         renderAnon();

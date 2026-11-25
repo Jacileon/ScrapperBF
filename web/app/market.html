@@ -38,6 +38,7 @@
 <script src="assets/data.js"></script>
 <script src="assets/icons.js"></script>
 <script src="assets/ui.js"></script>
+<script src="assets/session.js"></script>
 <script>
 (function(){
   var D = window.DATA || { markets: [] };
@@ -136,6 +137,7 @@
     + '<h1>'+V(m.title,'Avis de marché public')+'</h1>'
     + '<p class="mkt-ref"><strong>Réf. '+V(m.ref,'non spécifiée')+'</strong> · '+V(m.bulletin,'Quotidien officiel')+' ('+V(m.pages,'—')+') · Paru le '+V(m.pub_raw, window.fmtDate(m.pub))+'</p>'
     + '<div class="mkt-actions">'
+    + '<button class="button" id="follow-btn"><i data-icon="bookmark" data-size="14"></i> Suivre ce marché</button>'
     + '<button class="button secondary-button" onclick="window.print()"><i data-icon="printer" data-size="14"></i> Imprimer</button>'
     + '<button class="button secondary-button" onclick="navigator.clipboard.writeText(location.href);window.toast(\'Lien copié\')"><i data-icon="share2" data-size="14"></i> Partager</button>'
     + '<button class="button secondary-button" onclick="navigator.clipboard.writeText(\''+V(m.ref,m.id)+'\');window.toast(\'Référence copiée\')"><i data-icon="copy" data-size="14"></i> Copier la réf.</button>'
@@ -185,6 +187,37 @@
     });
   });
   window.renderIcons(document.getElementById('main-content'));
+
+  // ---- Suivre ce marché (favori + socle de l'alerte résultat) ----
+  (function(){
+    var btn = document.getElementById('follow-btn');
+    if(!btn || !window.VBF) return;
+    var AVIS_ID = m.id, following = false, busy = false;
+    function paint(){
+      btn.innerHTML = '<i data-icon="'+(following?'check':'bookmark')+'" data-size="14"></i> '+(following?'Marché suivi':'Suivre ce marché');
+      btn.classList.toggle('secondary-button', following);
+      window.renderIcons(btn);
+    }
+    window.VBF.api('/api/suivis/ids').then(function(ids){
+      following = Array.isArray(ids) && ids.indexOf(AVIS_ID) > -1; paint();
+    }).catch(function(){ paint(); });
+    btn.addEventListener('click', function(){
+      if(busy) return;
+      window.VBF.me().then(function(u){
+        if(!u){ location.href = 'login.html?next=' + encodeURIComponent(location.pathname + location.search); return; }
+        busy = true;
+        var req = following
+          ? window.VBF.api('/api/suivis/' + encodeURIComponent(AVIS_ID), {method:'DELETE'})
+          : window.VBF.api('/api/suivis', {body:{avis_id:AVIS_ID}});
+        req.then(function(){
+          following = !following; paint();
+          if(window.toast) window.toast(following ? 'Marché suivi ✓' : 'Retiré de vos suivis');
+        }).catch(function(){
+          if(window.toast) window.toast('Action impossible pour le moment');
+        }).then(function(){ busy = false; });
+      });
+    });
+  })();
 })();
 </script>
 <script src="assets/shell.js"></script>

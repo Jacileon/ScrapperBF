@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mes marchés suivis · VEILLE BF</title>
+<link rel="icon" href="assets/logo.svg">
+<link rel="stylesheet" href="assets/app.css">
+<link rel="stylesheet" href="assets/app-shell.css">
+<link rel="stylesheet" href="assets/saas.css">
+<style>
+.sv-group{margin-bottom:26px}
+.sv-group h2{font-size:14px;display:flex;align-items:center;gap:8px;margin:0 0 12px}
+.sv-group .sv-count{font-size:12px;color:var(--muted);font-weight:600}
+.sv-card{display:flex;gap:14px;align-items:flex-start;background:var(--bg);border:1px solid var(--line);border-radius:13px;padding:15px 16px;margin-bottom:10px}
+.sv-card .sv-main{min-width:0;flex:1}
+.sv-title{font-weight:700;font-size:14.5px;line-height:1.35;margin-bottom:4px}
+.sv-title a{color:var(--ink)}
+.sv-title a:hover{color:var(--primary)}
+.sv-meta{font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:2px}
+.sv-pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px}
+.sv-pill.cd{background:var(--primary-light);color:var(--primary)}
+.sv-pill.cd.soon{background:var(--danger-light);color:var(--danger)}
+.sv-pill.cd.closed{background:var(--bg-alt);color:var(--muted)}
+.sv-pill.res{background:#ecfdf5;color:#047857}
+.sv-win{margin-top:10px;background:var(--primary-light);border-radius:10px;padding:10px 12px;font-size:13px}
+.sv-win .sv-win-k{font-size:10.5px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.3px}
+.sv-win b{font-weight:700}
+.sv-debrief{font-size:12px;color:var(--muted);margin-top:4px}
+.sv-side{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0}
+.sv-soum{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;user-select:none}
+.sv-soum input{accent-color:var(--primary)}
+.sv-x{background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;border-radius:7px;line-height:0}
+.sv-x:hover{background:var(--danger-light);color:var(--danger)}
+.sv-empty{text-align:center;padding:52px 20px;color:var(--muted)}
+.sv-empty .es-ico{width:60px;height:60px;border-radius:16px;background:var(--primary-light);color:var(--primary);display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+.sv-empty strong{display:block;color:var(--ink);font-size:16px;margin-bottom:6px}
+</style>
+</head>
+<body>
+<div id="app" data-page="suivis"></div>
+<main class="main" id="main-content">
+  <section class="markets-hero" style="margin-bottom:16px">
+    <p class="eyebrow">Votre veille personnelle</p>
+    <h1>Mes marchés suivis</h1>
+    <p class="hero-copy">Gardez un œil sur les marchés qui comptent. Dès qu'un résultat est publié, vous êtes prévenu avec le gagnant, le montant et l'écart au budget.</p>
+  </section>
+
+  <div id="sv-body"><p class="muted" style="text-align:center;padding:40px">Chargement…</p></div>
+
+  <div class="app-footer"><span>Données publiques issues des bulletins officiels de la DGCMEF.</span><span>© 2026 Veille BF</span></div>
+</main>
+
+<script src="assets/icons.js"></script>
+<script src="assets/session.js"></script>
+<script>
+(function(){
+  var body = document.getElementById('sv-body');
+
+  function parseDMY(s){
+    if(!s) return null;
+    var m = (''+s).match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if(!m) return null;
+    return new Date(+m[3], +m[2]-1, +m[1], 23, 59, 59);
+  }
+  function daysLeft(s){
+    var d = parseDMY(s); if(!d) return null;
+    return Math.ceil((d - Date.now()) / 86400000);
+  }
+  function esc(s){ return (s==null?'':(''+s)).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function fcfa(n){ n=Number(n)||0; return n ? n.toLocaleString('fr-FR')+' FCFA' : null; }
+
+  function loginPrompt(){
+    body.innerHTML = '<div class="sv-empty"><div class="es-ico"><i data-icon="bookmark" data-size="26"></i></div>'
+      + '<strong>Connectez-vous pour suivre vos marchés</strong>'
+      + 'Créez un compte gratuit et suivez les appels d\'offres qui vous intéressent. Vous serez prévenu dès la publication des résultats.'
+      + '<div class="vbf-gate-actions" style="justify-content:center;margin-top:16px"><a class="button" href="login.html">Se connecter</a><a class="button ghost" href="register.html">Créer un compte</a></div></div>';
+    window.renderIcons(body);
+  }
+
+  function card(it, notif){
+    var dl = daysLeft(it.date_limite);
+    var statutSoum = it.statut === 'je_soumissionne';
+    var sideTop;
+    if(it.resultat_id){
+      sideTop = '<span class="sv-pill res"><i data-icon="trophy" data-size="12"></i> Résultat publié</span>';
+    } else if(dl === null){
+      sideTop = '';
+    } else if(dl < 0){
+      sideTop = '<span class="sv-pill cd closed"><i data-icon="lock" data-size="12"></i> Clôturé</span>';
+    } else {
+      sideTop = '<span class="sv-pill cd'+(dl<=3?' soon':'')+'"><i data-icon="clock" data-size="12"></i> '+(dl===0?'Dépôt aujourd\'hui':'J-'+dl)+'</span>';
+    }
+
+    var win = '';
+    if(notif && notif.payload){
+      var p = notif.payload;
+      if(p.infructueux){
+        win = '<div class="sv-win"><span class="sv-win-k">Issue</span><div>Marché déclaré infructueux.</div></div>';
+      } else if(p.gagnants && p.gagnants.length){
+        var g = p.gagnants[0];
+        win = '<div class="sv-win"><span class="sv-win-k">Attributaire</span>'
+            + '<div><b>'+esc(g.nom)+'</b>'+(g.montant?' · '+fcfa(g.montant):'')+(p.nb_offres?' · '+p.nb_offres+' offre'+(p.nb_offres>1?'s':''):'')+'</div>'
+            + (p.debrief?'<div class="sv-debrief">'+esc(p.debrief)+'</div>':'')
+            + '</div>';
+      }
+    } else if(it.resultat_id){
+      win = '<div class="sv-win"><span class="sv-win-k">Résultat</span><div>Le résultat est disponible. <a class="link" href="market.html?id='+encodeURIComponent(it.avis_id)+'">Voir le marché</a></div></div>';
+    }
+
+    var budget = fcfa(it.budget);
+    return '<div class="sv-card">'
+      + '<div class="sv-main">'
+      + '<div class="sv-title"><a href="market.html?id='+encodeURIComponent(it.avis_id)+'">'+esc(it.objet || 'Marché suivi')+'</a></div>'
+      + '<div class="sv-meta">'
+        + (it.autorite?'<span><i data-icon="landmark" data-size="12"></i> '+esc(it.autorite)+'</span>':'')
+        + (it.secteur?'<span>'+esc(it.secteur)+'</span>':'')
+        + (budget?'<span>'+budget+'</span>':'')
+        + (it.date_limite && !it.resultat_id?'<span>Dépôt : '+esc(it.date_limite)+'</span>':'')
+      + '</div>'
+      + win
+      + (!it.resultat_id && (dl===null || dl>=0) ? '<label class="sv-soum" style="margin-top:10px"><input type="checkbox" data-soum="'+esc(it.avis_id)+'"'+(statutSoum?' checked':'')+'> Je compte soumissionner</label>' : '')
+      + '</div>'
+      + '<div class="sv-side">'+sideTop
+      + '<button class="sv-x" title="Retirer" data-remove="'+esc(it.avis_id)+'"><i data-icon="x" data-size="16"></i></button>'
+      + '</div></div>';
+  }
+
+  function group(title, icon, items, notifBy){
+    if(!items.length) return '';
+    return '<div class="sv-group"><h2><i data-icon="'+icon+'" data-size="16"></i> '+title+' <span class="sv-count">'+items.length+'</span></h2>'
+      + items.map(function(it){ return card(it, notifBy[it.avis_id]); }).join('') + '</div>';
+  }
+
+  function render(items, notifs){
+    if(!items.length){
+      body.innerHTML = '<div class="sv-empty"><div class="es-ico"><i data-icon="bookmark" data-size="26"></i></div>'
+        + '<strong>Aucun marché suivi pour l\'instant</strong>'
+        + 'Ouvrez un marché et cliquez sur « Suivre ce marché ». Il apparaîtra ici, et vous serez prévenu dès la publication du résultat.'
+        + '<div class="vbf-gate-actions" style="justify-content:center;margin-top:16px"><a class="button" href="markets.html">Explorer les marchés</a></div></div>';
+      window.renderIcons(body);
+      return;
+    }
+    // Index des notifications de résultat par avis_id
+    var notifBy = {};
+    (notifs||[]).forEach(function(n){ if(n.type==='resultat' && n.avis_id && !notifBy[n.avis_id]) notifBy[n.avis_id] = n; });
+
+    var withResult = [], ongoing = [], closed = [];
+    items.forEach(function(it){
+      if(it.resultat_id) withResult.push(it);
+      else { var dl = daysLeft(it.date_limite); if(dl !== null && dl < 0) closed.push(it); else ongoing.push(it); }
+    });
+
+    body.innerHTML =
+        group('Résultats publiés', 'trophy', withResult, notifBy)
+      + group('En cours', 'clock', ongoing, notifBy)
+      + group('Clôturés', 'archive', closed, notifBy);
+    window.renderIcons(body);
+
+    body.querySelectorAll('[data-remove]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var id = b.getAttribute('data-remove');
+        window.VBF.api('/api/suivis/'+encodeURIComponent(id), {method:'DELETE'}).then(function(){
+          var c = b.closest('.sv-card'); if(c) c.remove();
+          if(window.toast) window.toast('Retiré de vos suivis');
+        });
+      });
+    });
+    body.querySelectorAll('[data-soum]').forEach(function(cb){
+      cb.addEventListener('change', function(){
+        var id = cb.getAttribute('data-soum');
+        window.VBF.api('/api/suivis/'+encodeURIComponent(id), {method:'PATCH', body:{statut: cb.checked?'je_soumissionne':'suivi'}})
+          .then(function(){ if(window.toast) window.toast(cb.checked?'Marqué : je soumissionne':'Mise à jour'); });
+      });
+    });
+  }
+
+  window.VBF.me().then(function(u){
+    if(!u){ loginPrompt(); return; }
+    Promise.all([
+      window.VBF.api('/api/suivis').then(function(d){ return d.results || []; }),
+      window.VBF.api('/api/notifications').then(function(d){ return d.notifications || []; }).catch(function(){ return []; })
+    ]).then(function(res){ render(res[0], res[1]); })
+      .catch(function(){ body.innerHTML = '<p class="muted" style="text-align:center;padding:40px">Impossible de charger vos marchés suivis.</p>'; });
+  });
+})();
+</script>
+<script src="assets/shell.js"></script>
+</body>
+</html>

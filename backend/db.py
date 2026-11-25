@@ -129,11 +129,42 @@ CREATE TABLE IF NOT EXISTS team_members (
     FOREIGN KEY(member_user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Favoris : marchés suivis par un utilisateur (socle de l'alerte résultat).
+CREATE TABLE IF NOT EXISTS suivis (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    avis_id TEXT NOT NULL,                   -- référence annonces_avis(id)
+    statut TEXT NOT NULL DEFAULT 'suivi',    -- suivi | je_soumissionne | abandonne
+    note TEXT,
+    scoring_snapshot_json TEXT,              -- réservé (débrief vs estimation future)
+    cree_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, avis_id),
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Notifications (alerte « boucle fermée » : marché suivi attribué, etc.).
+CREATE TABLE IF NOT EXISTS notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    type TEXT NOT NULL,                      -- resultat | ...
+    avis_id TEXT,
+    resultat_id TEXT,
+    titre TEXT,
+    message TEXT,
+    payload_json TEXT,
+    lu INTEGER NOT NULL DEFAULT 0,
+    cree_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_subs_user ON subscriptions(user_id);
 CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(user_id);
 CREATE INDEX IF NOT EXISTS idx_payments_ref ON payments(reference_interne);
 CREATE INDEX IF NOT EXISTS idx_apikeys_user ON api_keys(user_id);
+CREATE INDEX IF NOT EXISTS idx_suivis_user ON suivis(user_id);
+CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, lu);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_notif_unique ON notifications(user_id, type, resultat_id);
 """
 
 

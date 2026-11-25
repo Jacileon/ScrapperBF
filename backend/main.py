@@ -21,6 +21,8 @@ from backend.db import init_saas_schema
 from backend.routes_auth import router as auth_router
 from backend.routes_billing import router as billing_router
 from backend.routes_data import router as data_router
+from backend.routes_notifications import router as notifications_router
+from backend.routes_suivis import router as suivis_router
 
 app = FastAPI(
     title="Veille BF — SaaS Marchés Publics",
@@ -47,6 +49,8 @@ def _startup() -> None:
 app.include_router(auth_router)
 app.include_router(billing_router)
 app.include_router(data_router)
+app.include_router(suivis_router)
+app.include_router(notifications_router)
 
 
 # ----------------- Pages & redirections -----------------
@@ -76,6 +80,7 @@ FRIENDLY_ROUTES = {
     "compte": "account",
     "paiement": "checkout",
     "tableau-de-bord": "dashboard",
+    "mes-marches": "suivis",
     "marches": "markets",
     "resultats": "resultats",
     "entreprises": "entreprises",
