@@ -183,6 +183,7 @@
     + '</div>'
 
     + '<div id="scoring-panel"></div>'
+    + '<div id="dossier-panel"></div>'
 
     + '<div class="panel" style="margin-top:16px"><h2 style="display:flex;align-items:center;gap:8px;font-size:15px"><i data-icon="target" data-size="16" style="color:var(--primary)"></i> L’essentiel pour soumissionner</h2>'+essential+'</div>'
 
@@ -293,6 +294,35 @@
           + '</section>';
         window.renderIcons(host);
       }).catch(function(){ host.innerHTML=''; });
+  })();
+
+  // ---- Préparer ma soumission (checklist de dossier) ----
+  (function(){
+    var host = document.getElementById('dossier-panel');
+    if(!host || !window.VBF) return;
+    var AVIS = m.id;
+    function esc(s){ return (s==null?'':(''+s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+    window.VBF.me().then(function(u){ if(!u){ host.innerHTML=''; return; } shell(); });
+    function shell(){
+      host.innerHTML = '<section class="panel" style="margin-top:16px"><h2 style="display:flex;align-items:center;gap:8px;font-size:15px"><i data-icon="check" data-size="16" style="color:var(--primary)"></i> Préparer ma soumission</h2>'
+        + '<div id="dossier-inner"><button class="button secondary-button" id="dossier-start"><i data-icon="plus" data-size="14"></i> Créer ma checklist de pièces</button></div></section>';
+      window.renderIcons(host);
+      var b=document.getElementById('dossier-start');
+      if(b) b.addEventListener('click', function(){ window.VBF.api('/api/dossiers',{body:{avis_id:AVIS}}).then(function(){ load(); }); });
+      load(true);
+    }
+    function load(){
+      window.VBF.api('/api/dossiers').then(function(d){
+        var dos=(d.results||[]).filter(function(x){ return x.avis_id===AVIS; })[0];
+        var inner=document.getElementById('dossier-inner'); if(!inner || !dos) return;
+        var pieces=dos.pieces||[];
+        inner.innerHTML='<div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">'+dos.pieces_cochees+'/'+dos.pieces_total+' pièces prêtes</div>'
+          + pieces.map(function(p){ return '<label style="display:flex;gap:9px;align-items:center;padding:6px 0;font-size:13.5px;cursor:pointer"><input type="checkbox" data-piece="'+p.id+'"'+(p.coche?' checked':'')+'> '+esc(p.libelle)+'</label>'; }).join('');
+        inner.querySelectorAll('[data-piece]').forEach(function(cb){ cb.addEventListener('change', function(){
+          window.VBF.api('/api/dossiers/pieces/'+cb.getAttribute('data-piece'),{method:'PATCH',body:{coche:cb.checked}}).then(function(){ load(); });
+        }); });
+      });
+    }
   })();
 })();
 </script>
