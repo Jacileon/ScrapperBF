@@ -1,7 +1,8 @@
 # ============================================================
-# Runtime PROD — serveur web & API (léger)
-# C'est tout ce dont le VPS a besoin pour SERVIR le site.
+# Runtime PROD — serveur web & API (léger).
+# Déployable sur Vercel (@vercel/python) ou VPS/Docker.
 # L'ingestion (OCR/LLM) a ses propres deps : requirements-pipeline.txt
 # ============================================================
 fastapi==0.162.0
 uvicorn[standard]==0.54.0
+psycopg2-binary==2.9.13

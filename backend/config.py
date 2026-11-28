@@ -14,7 +14,13 @@ from pathlib import Path
 # Racine du projet (…/ScrapperBF)
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# --- Base de données (on réutilise la base métier existante) ---
+# --- Base de données ---
+# Postgres (Supabase) en production/SaaS : chaîne de connexion libpq ou URI.
+#   ex : postgresql://user:pwd@host:6543/postgres?sslmode=require
+# Fournie par VEILLEBF_DATABASE_URL (ou DATABASE_URL). Si absente, on retombe
+# sur la base SQLite locale (pipeline / dev hors-ligne).
+DATABASE_URL = os.getenv("VEILLEBF_DATABASE_URL") or os.getenv("DATABASE_URL", "")
+# Base SQLite historique (pipeline d'ingestion + repli dev si DATABASE_URL vide).
 DB_PATH = Path(os.getenv("VEILLEBF_DB", BASE_DIR / "marches_publics_burkina.db"))
 
 # --- Dossier du front statique ---
@@ -41,13 +47,21 @@ _cors = os.getenv("VEILLEBF_CORS_ORIGINS", PUBLIC_URL)
 CORS_ORIGINS = [o.strip() for o in _cors.split(",") if o.strip()]
 
 # --- Fournisseur de paiement ---
-# "sandbox" (simulation), "manual" (activation manuelle), ou plus tard "cinetpay"/"ligdicash".
-PAYMENT_PROVIDER = os.getenv("VEILLEBF_PAYMENT_PROVIDER", "sandbox").lower()
+# "leekpay" (Mobile Money & Carte), "sandbox" (simulation), "manual" (activation manuelle).
+PAYMENT_PROVIDER = os.getenv("VEILLEBF_PAYMENT_PROVIDER", "leekpay").lower()
 
-# Clés du fournisseur réel (à renseigner le moment venu)
-PROVIDER_API_KEY = os.getenv("VEILLEBF_PROVIDER_API_KEY", "")
-PROVIDER_SITE_ID = os.getenv("VEILLEBF_PROVIDER_SITE_ID", "")
-PROVIDER_SECRET = os.getenv("VEILLEBF_PROVIDER_SECRET", "")
+# LeekPay (Agrégateur Mobile Money Orange / Moov / Wave / Carte)
+# IMPORTANT : ne JAMAIS coder les clés en dur ici. Elles viennent uniquement de
+# l'environnement (.env en local, variables d'environnement Vercel en prod).
+LEEKPAY_PUBLIC_KEY = os.getenv("LEEKPAY_PUBLIC_KEY", "")
+LEEKPAY_SECRET_KEY = os.getenv("LEEKPAY_SECRET_KEY", "")
+LEEKPAY_WEBHOOK_SECRET = os.getenv("LEEKPAY_WEBHOOK_SECRET", "")
+LEEKPAY_BASE_URL = os.getenv("LEEKPAY_BASE_URL", "https://leekpay.fr").rstrip("/")
+
+# Clés du fournisseur générique (compatibilité)
+PROVIDER_API_KEY = os.getenv("VEILLEBF_PROVIDER_API_KEY", LEEKPAY_SECRET_KEY)
+PROVIDER_SITE_ID = os.getenv("VEILLEBF_PROVIDER_SITE_ID", LEEKPAY_PUBLIC_KEY)
+PROVIDER_SECRET = os.getenv("VEILLEBF_PROVIDER_SECRET", LEEKPAY_WEBHOOK_SECRET)
 
 # --- Divers ---
 IS_DEV = os.getenv("VEILLEBF_ENV", "dev").lower() in ("dev", "development", "local")

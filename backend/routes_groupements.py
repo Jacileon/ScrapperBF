@@ -108,18 +108,40 @@ def trouver_partenaires(
             (user["id"], f'%{sec}%'),
         ).fetchall()]
 
-        # 2) Entreprises historiquement actives dans le secteur (suggestions)
-        suggestions = [dict(r) for r in conn.execute(
+        # 2) Entreprises du domaine ayant déjà répondu en groupement (partenaires potentiels)
+        partenaires_groupement = [dict(r) for r in conn.execute(
             """SELECT s.nom_canonique AS nom,
                       SUM(CASE WHEN s.est_attributaire=1 THEN 1 ELSE 0 END) AS gagnes,
                       COUNT(*) AS soumissions
                FROM resultats_soumissionnaires s JOIN resultats_marches m ON m.id = s.resultat_id
                WHERE m.secteur_activite = ? AND s.nom_canonique IS NOT NULL
-                     AND LENGTH(TRIM(s.nom_canonique)) > 3
-               GROUP BY s.nom_canonique ORDER BY gagnes DESC, soumissions DESC LIMIT 12""",
+                     AND s.nom_canonique != 'INCONNU' AND LENGTH(TRIM(s.nom_canonique)) > 3
+                     AND (s.est_groupement = 1 OR UPPER(s.nom_canonique) LIKE '%GROUPEMENT%')
+               GROUP BY s.nom_canonique ORDER BY gagnes DESC, soumissions DESC LIMIT 6""",
             (sec,),
         ).fetchall()]
 
-        return {"secteur": sec, "objet": objet, "membres": membres, "suggestions": suggestions}
+        # 3) Concurrents potentiels actifs dans le secteur (soumissionnaires directs)
+        concurrents_potentiels = [dict(r) for r in conn.execute(
+            """SELECT s.nom_canonique AS nom,
+                      SUM(CASE WHEN s.est_attributaire=1 THEN 1 ELSE 0 END) AS gagnes,
+                      COUNT(*) AS soumissions
+               FROM resultats_soumissionnaires s JOIN resultats_marches m ON m.id = s.resultat_id
+               WHERE m.secteur_activite = ? AND s.nom_canonique IS NOT NULL
+                     AND s.nom_canonique != 'INCONNU' AND LENGTH(TRIM(s.nom_canonique)) > 3
+                     AND COALESCE(s.est_groupement, 0) = 0
+                     AND UPPER(s.nom_canonique) NOT LIKE '%GROUPEMENT%'
+               GROUP BY s.nom_canonique ORDER BY gagnes DESC, soumissions DESC LIMIT 8""",
+            (sec,),
+        ).fetchall()]
+
+        return {
+            "secteur": sec,
+            "objet": objet,
+            "membres": membres,
+            "partenaires_groupement": partenaires_groupement,
+            "concurrents_potentiels": concurrents_potentiels,
+            "suggestions": concurrents_potentiels,
+        }
     finally:
         conn.close()

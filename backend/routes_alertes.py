@@ -40,11 +40,12 @@ def creer_alerte(body: AlerteIn, request: Request):
     try:
         cur = conn.execute(
             """INSERT INTO alertes (user_id, secteur, type_marche, region, canal, cible)
-               VALUES (?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?) RETURNING id""",
             (user["id"] if user else None, body.secteur, body.type_marche, body.region, canal, cible),
         )
+        new_id = cur.fetchone()[0]
         conn.commit()
-        return {"ok": True, "id": cur.lastrowid, "message": "Alerte créée. Vous recevrez les marchés correspondants."}
+        return {"ok": True, "id": new_id, "message": "Alerte créée. Vous recevrez les marchés correspondants."}
     finally:
         conn.close()
 

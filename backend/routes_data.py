@@ -86,8 +86,8 @@ def list_markets(
     conditions, params = [], []
     if q:
         like_q = f"%{q}%"
-        conditions.append("(objet_marche LIKE ? OR autorite_contractante LIKE ? OR reference_dossier LIKE ? OR ministere_tutelle LIKE ?)")
-        params.extend([like_q, like_q, like_q, like_q])
+        conditions.append("(objet_marche LIKE ? OR autorite_contractante LIKE ? OR reference_dossier LIKE ? OR ministere_tutelle LIKE ? OR numero_bulletin LIKE ?)")
+        params.extend([like_q, like_q, like_q, like_q, like_q])
     if categorie:
         conditions.append("categorie_marche LIKE ?"); params.append(f"%{categorie}%")
     if sector:
@@ -132,6 +132,86 @@ def get_market(market_id: str, request: Request):
     market_data["lots"] = [dict(r) for r in c.fetchall()]
     conn.close()
     return market_data
+
+
+@router.get("/markets/{market_id}/similar-open")
+def get_similar_open_markets(market_id: str, limit: int = Query(6, ge=1, le=20)):
+    """
+    Retourne les marchés similaires encore ouverts (date de clôture non échue).
+    Scoring basé sur la correspondance de secteur, de catégorie, d'autorité et de mots-clés du titre.
+    """
+    import re
+    from datetime import date
+    
+    conn = get_db()
+    c = conn.cursor()
+    target_row = c.execute("SELECT * FROM annonces_avis WHERE id = ?", (market_id,)).fetchone()
+    if not target_row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Marché non trouvé")
+    
+    target = dict(target_row)
+    t_obj = (target.get("objet_marche") or "").lower()
+    t_sec = target.get("secteur_activite")
+    t_cat = target.get("categorie_marche")
+    t_auth = target.get("autorite_contractante")
+
+    stopwords = {'de', 'des', 'du', 'la', 'le', 'les', 'au', 'aux', 'et', 'en', 'un', 'une', 'pour', 'par', 'dans', 'sur', 'avec', 'sans', 'sous', 'vers', 'chez', 'd', 'l', 'a', 'profit', 'fourniture', 'acquisition', 'travaux', 'projet', 'marche', 'realisation', 'construction', 'services', 'recrutement', 'avis', 'appel', 'offres', 'dossier', 'burkina', 'faso'}
+    tokens = re.findall(r'[a-zA-Zàâäéèêëîïôöùûüç]{4,}', t_obj)
+    target_kws = [w for w in tokens if w not in stopwords]
+
+    today_iso = date.today().isoformat()
+
+    c.execute("SELECT * FROM annonces_avis WHERE id != ?", (market_id,))
+    all_notices = [dict(r) for r in c.fetchall()]
+    conn.close()
+
+    candidates = []
+    for m in all_notices:
+        dl_raw = m.get("date_limite_depot")
+        if not dl_raw:
+            continue
+        m_iso = None
+        if "/" in str(dl_raw):
+            pts = str(dl_raw).strip().split("/")
+            if len(pts) == 3:
+                m_iso = f"{pts[2]}-{pts[1].zfill(2)}-{pts[0].zfill(2)}"
+        elif "-" in str(dl_raw):
+            m_iso = str(dl_raw).strip()[:10]
+        
+        # Filtrer : la clôture ne doit pas être passée
+        if m_iso and m_iso < today_iso:
+            continue
+
+        score = 0
+        reasons = []
+        if t_sec and m.get("secteur_activite") == t_sec:
+            score += 40
+            reasons.append(f"Même secteur ({t_sec})")
+        if t_cat and m.get("categorie_marche") == t_cat:
+            score += 15
+        if t_auth and m.get("autorite_contractante") == t_auth:
+            score += 15
+            reasons.append("Même acheteur")
+        
+        m_obj = (m.get("objet_marche") or "").lower()
+        m_tokens = re.findall(r'[a-zA-Zàâäéèêëîïôöùûüç]{4,}', m_obj)
+        m_kws = set(w for w in m_tokens if w not in stopwords)
+        shared = [w for w in target_kws if w in m_kws]
+        if shared:
+            score += len(shared) * 25
+            reasons.append(f"Mots-clés : {', '.join(shared[:3])}")
+        
+        if score >= 35:
+            candidates.append({
+                "market": m,
+                "similarity_score": min(score, 100),
+                "reasons": reasons,
+                "deadline_iso": m_iso
+            })
+    
+    candidates.sort(key=lambda x: (-x["similarity_score"], x["deadline_iso"] or "9999"))
+    return {"total": len(candidates), "target_id": market_id, "results": candidates[:limit]}
 
 
 @router.get("/authorities")
@@ -287,8 +367,8 @@ def list_entreprises(
     ]
     params = []
     if q:
-        conditions.append("(nom_canonique LIKE ? OR ifu LIKE ? OR rccm LIKE ? OR telephone LIKE ?)")
-        like = f"%{q}%"; params.extend([like, like, like, like])
+        conditions.append("(nom_canonique LIKE ? OR ifu LIKE ? OR rccm LIKE ? OR telephone LIKE ? OR email LIKE ?)")
+        like = f"%{q}%"; params.extend([like, like, like, like, like])
     where_sql = "WHERE " + " AND ".join(conditions)
     c.execute(f"""
         SELECT nom_canonique AS nom,
@@ -309,12 +389,45 @@ def list_entreprises(
 @router.get("/data/entreprise")
 def get_entreprise_detail(nom: str = Query(..., min_length=1)):
     """Fiche détaillée dynamique d'une entreprise depuis SQLite (coordonnées, marchés gagnés, toutes soumissions & remarques)."""
+    import unicodedata
     from export_resultats_to_front import clean_contact_field, detect_ville
 
     conn = get_db()
     c = conn.cursor()
     target = nom.strip()
-    c.execute("""
+
+    # Recherche rapide et indexée des alias (sans scan de table complet)
+    unacc = "".join(c for c in unicodedata.normalize("NFD", target) if unicodedata.category(c) != "Mn").upper()
+    cands = list(dict.fromkeys([target, target.upper(), target.lower(), target.title(), unacc]))
+    ph = ",".join("?" * len(cands))
+
+    c.execute(f"""
+        SELECT DISTINCT nom_canonique 
+        FROM resultats_soumissionnaires 
+        WHERE nom_canonique IN ({ph}) 
+           OR nom_soumissionnaire IN ({ph})
+        ORDER BY CASE WHEN nom_canonique = ? THEN 0 ELSE 1 END
+        LIMIT 1
+    """, cands + cands + [target])
+    canon_res = c.fetchone()
+
+    # Si non trouvé exactement (ex: casse mixte 'La Générale de la Gastronomie (GEGA)'), recherche par sigle ou début de chaîne
+    if not canon_res:
+        import re
+        sigle_m = re.search(r"\(([^)]+)\)", target)
+        if sigle_m:
+            sigle = sigle_m.group(1).strip()
+            c.execute("SELECT DISTINCT nom_canonique FROM resultats_soumissionnaires WHERE nom_canonique LIKE ? OR nom_soumissionnaire LIKE ? LIMIT 1", (f"%({sigle})%", f"%({sigle})%"))
+            canon_res = c.fetchone()
+        if not canon_res and len(unacc) >= 6:
+            c.execute("SELECT DISTINCT nom_canonique FROM resultats_soumissionnaires WHERE nom_canonique LIKE ? LIMIT 1", (f"{target[:12]}%",))
+            canon_res = c.fetchone()
+    canonical_target = canon_res[0] if (canon_res and canon_res[0]) else target
+
+    c_list = list(dict.fromkeys([canonical_target, canonical_target.upper(), target, target.upper()]))
+    ph2 = ",".join("?" * len(c_list))
+
+    c.execute(f"""
         SELECT s.*, m.objet, m.autorite_contractante AS autorite, m.date_parution AS date,
                m.reference_dossier AS reference, m.secteur_activite AS secteur,
                m.annonce_avis_id AS avis_id, m.bulletin,
@@ -324,9 +437,9 @@ def get_entreprise_detail(nom: str = Query(..., min_length=1)):
         FROM resultats_soumissionnaires s
         LEFT JOIN resultats_marches m ON m.id = s.resultat_id
         LEFT JOIN resultats_lots l ON l.id = s.lot_id
-        WHERE UPPER(TRIM(COALESCE(s.nom_canonique, s.nom_soumissionnaire))) = UPPER(?)
+        WHERE s.nom_canonique IN ({ph2})
         ORDER BY m.date_parution DESC, s.id DESC
-    """, (target,))
+    """, c_list)
     sub_rows = [dict(r) for r in c.fetchall()]
     conn.close()
 
@@ -418,6 +531,91 @@ def get_entreprise_detail(nom: str = Query(..., min_length=1)):
     profile["secteurs"] = sorted(profile["secteurs"])
     profile["taux_reussite"] = round(100 * profile["gagnes"] / profile["soumissions"]) if profile["soumissions"] else 0
     return {"entreprise": profile, "wins": wins, "soumissions": soumissions_list}
+
+
+@router.get("/data/resultat")
+def get_resultat_detail(id: str = Query(..., min_length=1), lot: Optional[str] = Query(None)):
+    """Détail complet d'un résultat d'attribution : marché, lots, délibérations et soumissionnaires."""
+    conn = get_db()
+    c = conn.cursor()
+    raw_id = id.strip()
+    marche_id = raw_id.split("#")[0].strip()
+    lot_filter = lot or (raw_id.split("#")[1].strip() if "#" in raw_id else None)
+
+    c.execute("SELECT * FROM resultats_marches WHERE id = ?", (marche_id,))
+    row_m = c.fetchone()
+    if not row_m:
+        c.execute("SELECT * FROM resultats_marches WHERE annonce_avis_id = ? OR id LIKE ? LIMIT 1", (marche_id, f"%{marche_id}%"))
+        row_m = c.fetchone()
+
+    if not row_m:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Résultat introuvable")
+
+    marche = dict(row_m)
+
+    # Récupérer l'avis d'origine s'il est lié (permet l'affichage split-view instantané)
+    avis_origine = None
+    if marche.get("annonce_avis_id"):
+        c.execute("""
+            SELECT id, numero_bulletin, date_parution, pages, categorie_marche, type_procedure,
+                   reference_dossier, autorite_contractante, ministere_tutelle, objet_marche,
+                   allotissement_type, nombre_lots, budget_previsionnel_fcfa,
+                   garantie_soumission_fcfa, cout_acquisition_dossier_fcfa,
+                   source_financement, exercice_budgetaire, date_limite_depot,
+                   heure_limite_depot, delai_execution_jours, lieu_depot_offres,
+                   date_heure_ouverture_plis, qualifications_ou_agrement, contacts_renseignements
+            FROM annonces_avis WHERE id = ?
+        """, (marche["annonce_avis_id"],))
+        row_a = c.fetchone()
+        if row_a:
+            avis_origine = dict(row_a)
+            c.execute("SELECT numero_lot, titre, montant_fcfa, caution_fcfa FROM detail_lots WHERE annonce_id = ? ORDER BY id ASC", (marche["annonce_avis_id"],))
+            avis_origine["lots"] = [dict(al) for al in c.fetchall()]
+
+    # Récupérer les lots
+    c.execute("SELECT * FROM resultats_lots WHERE resultat_id = ? ORDER BY numero_lot ASC", (marche["id"],))
+    lots = [dict(l) for l in c.fetchall()]
+
+    # Normaliser les seuils (calcul auto tolérance 5% si borne_inf présente mais tolérance absente)
+    for l in lots:
+        binf = l.get("borne_inf_basse_fcfa")
+        tol = l.get("seuil_tolerance_5pct_fcfa")
+        if binf and not tol:
+            l["seuil_tolerance_5pct_fcfa"] = round(binf * 0.95)
+            l["seuil_tolerance_calcule"] = True
+
+    # Récupérer tous les soumissionnaires triés strictement par lot puis rang croissant (1er, 2e, 3e...)
+    c.execute("""
+        SELECT s.*, l.numero_lot 
+        FROM resultats_soumissionnaires s
+        LEFT JOIN resultats_lots l ON l.id = s.lot_id
+        WHERE s.resultat_id = ?
+        ORDER BY l.numero_lot ASC,
+                 CASE WHEN s.rang_numerique IS NOT NULL AND s.rang_numerique > 0 THEN 0 ELSE 1 END,
+                 s.rang_numerique ASC,
+                 s.est_attributaire DESC,
+                 s.id ASC
+    """, (marche["id"],))
+    soums = [dict(s) for s in c.fetchall()]
+    conn.close()
+
+    # Organiser les soumissionnaires par lot
+    soums_by_lot = {}
+    for s in soums:
+        num_lot = str(s.get("numero_lot") or s.get("lot_id") or "1")
+        soums_by_lot.setdefault(num_lot, []).append(s)
+
+    for l in lots:
+        num_lot = str(l.get("numero_lot") or "1")
+        l["soumissionnaires"] = soums_by_lot.get(num_lot, [])
+
+    return {
+        "marche": marche,
+        "lots": lots,
+        "avis": avis_origine,
+        "selected_lot": lot_filter,
+    }
 
 
 _LIVE_RESULTATS_CACHE = {"ts": 0.0, "json_bytes": None, "building": False}

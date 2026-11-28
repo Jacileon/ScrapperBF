@@ -8,76 +8,713 @@
 <link rel="stylesheet" href="assets/app.css">
 <link rel="stylesheet" href="assets/app-shell.css">
 <link rel="stylesheet" href="assets/saas.css">
+<script src="assets/data.js"></script>
+<script src="assets/ui.js"></script>
 <style>
-.radar-add{display:flex;gap:8px;margin:14px 0 20px}
-.radar-add input{flex:1;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:14px}
-.rc-card{display:flex;align-items:center;gap:14px;background:var(--bg);border:1px solid var(--line);border-radius:13px;padding:14px 16px;margin-bottom:10px}
-.rc-ava{width:42px;height:42px;border-radius:11px;background:var(--primary-light);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0}
+/* ===== Radar concurrent — cockpit de surveillance ===== */
+.rd-head{margin-bottom:16px}
+.rd-eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--primary);background:var(--primary-light);padding:4px 11px;border-radius:999px}
+.rd-eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--primary);animation:rdpulse 1.8s infinite}
+@keyframes rdpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
+.rd-head h1{font-size:28px;margin:10px 0 6px;color:var(--primary)}
+.rd-head .sub{color:var(--muted);max-width:720px;font-size:14.5px;line-height:1.55}
+
+/* Alerte radar */
+.rd-alert{border:1px solid var(--primary);border-radius:16px;background:linear-gradient(100deg,var(--primary-light),var(--accent-light) 70%,#fff);padding:14px 18px;margin-bottom:16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;animation:rdfade .5s ease both}
+.rd-alert .ai{width:42px;height:42px;border-radius:12px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.rd-alert .am{flex:1;min-width:230px}
+.rd-alert .at{font-weight:800;font-size:14.5px;color:var(--primary);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rd-alert .abadge{font-size:11px;font-weight:800;background:var(--accent);color:#fff;padding:2px 9px;border-radius:999px}
+.rd-alert .ax{font-size:13px;color:var(--ink);margin-top:2px}
+
+/* Grille : radar + liste */
+.rd-wrap{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:18px;align-items:start}
+@media(max-width:1000px){.rd-wrap{grid-template-columns:1fr}}
+
+/* Panneau radar (visuel animé) */
+.rd-scope{border:1px solid var(--line);border-radius:18px;background:radial-gradient(circle at 50% 42%,var(--primary-light),var(--surface) 70%);padding:18px;box-shadow:var(--shadow-sm);position:sticky;top:calc(var(--header-h) + 14px)}
+@media(max-width:1000px){.rd-scope{position:static}}
+.rd-svg{width:100%;max-width:360px;height:auto;display:block;margin:2px auto 6px;overflow:visible}
+.rd-bg{fill:url(#rdg)}
+.rd-ring{fill:none;stroke:var(--line);stroke-width:1}
+.rd-cross{stroke:var(--line);stroke-width:1;opacity:.7}
+.rd-center{fill:var(--primary)}
+.rd-sweep{transform-origin:150px 150px;animation:rdspin 4.5s linear infinite}
+@keyframes rdspin{to{transform:rotate(360deg)}}
+.rd-beam{fill:var(--primary);opacity:.12}
+.rd-line{stroke:var(--primary);stroke-width:2;opacity:.55}
+.rd-dot{fill:var(--primary);stroke:#fff;stroke-width:1.5;cursor:pointer;transition:r .15s}
+.rd-blip{cursor:pointer}
+.rd-blip:hover .rd-dot{r:8}
+.rd-blip.active .rd-dot{fill:var(--accent)}
+.rd-blip.recent .rd-dot{fill:var(--accent)}
+.rd-lbl{fill:var(--ink);font-size:9px;font-weight:800;text-anchor:middle;pointer-events:none}
+.rd-ripple{fill:none;stroke:var(--accent);stroke-width:2;animation:rdripple 1.9s ease-out infinite}
+@keyframes rdripple{0%{r:6;opacity:.85}100%{r:20;opacity:0}}
+.rd-scope-foot{text-align:center;color:var(--muted);font-size:12px;margin-top:4px}
+
+/* Ajout + suggestions */
+.rd-add{display:flex;gap:8px;margin-top:14px}
+.rd-add input{flex:1;padding:11px 13px;border:1px solid var(--line);border-radius:11px;background:var(--bg);font-size:14px}
+.rd-add input:focus{outline:none;border-color:var(--primary)}
+.rd-sugg{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px;align-items:center}
+.rd-sugg .lbl{font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+.rd-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:5px 11px;border-radius:999px;border:1px dashed var(--line);background:var(--surface);color:var(--ink);cursor:pointer;transition:.15s}
+.rd-chip:hover{border-style:solid;border-color:var(--primary);color:var(--primary)}
+.rd-chip .g{font-size:10px;color:var(--primary);font-weight:800}
+
+/* Stats */
+.rd-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+@media(max-width:560px){.rd-stats{grid-template-columns:1fr}}
+.rd-stat{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;box-shadow:var(--shadow-sm)}
+.rd-stat .si{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--primary-light);color:var(--primary)}
+.rd-stat.gold .si{background:var(--accent-light);color:var(--accent)}
+.rd-stat .sv{font-size:21px;font-weight:800;line-height:1}
+.rd-stat .sl{font-size:11.5px;color:var(--muted)}
+
+/* Liste concurrents */
+.rc-head{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800;margin:4px 0 12px}
+.rc-list{display:flex;flex-direction:column;gap:11px}
+.rc-card{display:flex;gap:13px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:15px;padding:14px 15px;box-shadow:var(--shadow-sm);transition:.18s;animation:rdfade .4s ease both}
+.rc-card:hover{border-color:var(--primary);box-shadow:var(--shadow)}
+.rc-card.flash{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.rc-ava{width:44px;height:44px;border-radius:12px;background:var(--primary-light);color:var(--primary);font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .rc-main{flex:1;min-width:0}
-.rc-nom{font-weight:700;font-size:14px}
-.rc-meta{font-size:12.5px;color:var(--muted);margin-top:2px}
-.rc-x{background:none;border:none;color:var(--muted);cursor:pointer;padding:6px;border-radius:8px;line-height:0}
-.rc-x:hover{background:var(--danger-light);color:var(--danger)}
-.radar-empty{text-align:center;padding:48px 20px;color:var(--muted)}
-.radar-empty .es-ico{width:60px;height:60px;border-radius:16px;background:var(--primary-light);color:var(--primary);display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
-.radar-empty strong{display:block;color:var(--ink);font-size:16px;margin-bottom:6px}
+.rc-nom{font-size:14.5px;font-weight:800;color:var(--ink);line-height:1.25}
+.rc-stats{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:5px 0 6px}
+.rc-stats b{color:var(--ink);font-weight:800}
+.rc-bar{height:6px;border-radius:999px;background:var(--bg-alt);overflow:hidden;max-width:240px}
+.rc-bar>i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--primary))}
+.rc-last{font-size:12px;color:var(--ink);margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);display:flex;align-items:flex-start;gap:6px}
+.rc-last i{color:var(--primary);flex-shrink:0;margin-top:1px}
+.rc-x{background:none;border:1px solid var(--line);color:var(--muted);cursor:pointer;width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s}
+.rc-x:hover{background:var(--danger-light);color:var(--danger);border-color:var(--danger)}
+
+/* Toast / vides */
+.rd-toast{position:fixed;bottom:24px;right:24px;z-index:60;display:flex;align-items:center;gap:9px;background:var(--primary);color:#fff;padding:11px 16px;border-radius:999px;box-shadow:var(--shadow);transform:translateY(60px);opacity:0;transition:.3s;pointer-events:none;font-size:13.5px;font-weight:600}
+.rd-toast.show{transform:translateY(0);opacity:1}
+.rd-empty{text-align:center;padding:40px 18px;color:var(--muted)}
+.rd-empty .es-ico{width:60px;height:60px;border-radius:16px;background:var(--primary-light);color:var(--primary);display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+.rd-empty strong{display:block;color:var(--ink);font-size:16px;margin-bottom:6px}
+@keyframes rdfade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+/* Canaux d'alerte & Filtres d'écoute */
+.rd-prefs-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px}
+@media(max-width:960px){.rd-prefs-grid{grid-template-columns:1fr}}
+.rd-pref-card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:14px}
+.rd-pref-head{display:flex;gap:12px;align-items:flex-start}
+.rd-pref-ico{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.rd-pref-ico.green{background:#ecfdf5;color:#059669}
+.rd-pref-ico.amber{background:#fef3c7;color:#d97706}
+.rd-pref-head h3{margin:0;font-size:16px;font-weight:800;color:var(--ink)}
+.rd-pref-head p{margin:3px 0 0;font-size:12.5px;color:var(--muted);line-height:1.4}
+.rd-chan-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;background:var(--bg-alt);border:1px solid var(--line)}
+.rd-chan-ico{width:36px;height:36px;border-radius:10px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--ink)}
+.rd-chan-ico.amber{color:#b45309;background:#fef3c7;border-color:#fde68a}
+.rd-chan-body{flex:1;min-width:0}
+.rd-chan-title{font-size:13.5px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.rd-chan-tag{font-size:9.5px;font-weight:800;padding:2px 7px;border-radius:999px;text-transform:uppercase;letter-spacing:.4px}
+.rd-chan-tag.inst{background:#064e3b;color:#fff}
+.rd-chan-tag.daily{background:#e2e8f0;color:#334155}
+.rd-chan-tag.add{background:#fef3c7;color:#92400e}
+.rd-chan-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.rd-switch{position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0}
+.rd-switch input{opacity:0;width:0;height:0}
+.rd-switch span{position:absolute;cursor:pointer;inset:0;background:#cbd5e1;border-radius:999px;transition:.2s}
+.rd-switch span:before{content:"";position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.rd-switch input:checked+span{background:#064e3b}
+.rd-switch input:checked+span.amber{background:#9a3412}
+.rd-switch input:checked+span:before{transform:translateX(20px)}
+.rd-chan-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-radius:12px;background:var(--bg-alt);font-size:12px;color:var(--muted);margin-top:auto}
+.rd-kw-list{display:flex;flex-wrap:wrap;gap:7px}
+.rd-kw-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;background:#064e3b;color:#fff;font-size:12px;font-weight:700}
+.rd-kw-chip button{border:0;background:none;color:#a7f3d0;cursor:pointer;padding:0;font-size:13px;line-height:1}
+.rd-kw-sugg{display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border-radius:999px;background:var(--bg-alt);border:1px solid var(--line);color:var(--ink);font-size:12px;font-weight:600;cursor:pointer}
+.rd-kw-sugg:hover{border-color:var(--primary);color:var(--primary)}
+.rd-kw-add{border:1px dashed var(--line);background:transparent;color:var(--muted);padding:5px 11px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer}
+.rd-auth-box{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:12px;background:var(--bg-alt);border:1px solid var(--line)}
+.rd-tbl-card{margin-top:22px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:var(--shadow-sm)}
+.rd-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.rd-tbl th{text-align:left;padding:10px 12px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);background:var(--bg-alt);border-bottom:1px solid var(--line)}
+.rd-tbl th:first-child{border-radius:10px 0 0 10px}
+.rd-tbl th:last-child{border-radius:0 10px 10px 0;text-align:right}
+.rd-tbl td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+.rd-tbl tr:hover td{background:var(--bg-alt)}
 </style>
 </head>
 <body>
 <div id="app" data-page="radar"></div>
 <main class="main" id="main-content">
-  <section class="markets-hero" style="margin-bottom:10px">
-    <p class="eyebrow">Surveillance de la concurrence</p>
+
+  <div class="rd-head">
+    <span class="rd-eyebrow"><span class="dot"></span> Surveillance de la concurrence</span>
     <h1>Radar concurrent</h1>
-    <p class="hero-copy">Ajoutez les entreprises qui vous font face. Dès qu'une d'elles remporte un marché, vous recevez une alerte dans votre cloche 🔔.</p>
-  </section>
-  <div id="radar-body"><p class="muted" style="text-align:center;padding:30px">Chargement…</p></div>
-  <div class="app-footer"><span>Profils issus des résultats d'attribution de la DGCMEF.</span><span>© 2026 Veille BF</span></div>
+    <p class="sub">Ajoutez les entreprises qui vous font face. Dès qu'une d'elles remporte un marché, vous recevez une alerte 🔔 — et vous suivez ici leurs performances, montants et derniers gains.</p>
+  </div>
+
+  <div id="rd-app"><p class="muted" style="text-align:center;padding:50px">Chargement du radar…</p></div>
+
+  <div class="app-footer"><span>Profils issus des résultats d'attribution de la DGCMEF (Burkina Faso).</span><span>© 2026 Veille BF</span></div>
 </main>
+
+<div class="rd-toast" id="rd-toast"><i data-icon="check" data-size="16"></i><span id="rd-toast-txt">Fait</span></div>
 
 <script src="assets/icons.js"></script>
 <script src="assets/session.js"></script>
 <script>
 (function(){
-  var V=window.VBF, body=document.getElementById('radar-body');
+  var V = window.VBF;
+  var app = document.getElementById('rd-app');
+  var DEMO = /[?&]demo=1/.test(location.search);
+
+  // ---------- helpers ----------
   function esc(s){ return (s==null?'':(''+s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
-  function fcfa(n){ n=Number(n)||0; return n?n.toLocaleString('fr-FR')+' FCFA':''; }
-  function initials(s){ s=(s||'').trim(); return (s.slice(0,2)||'??').toUpperCase(); }
+  function initials(s){ return (s||'?').replace(/[^A-Za-zÀ-ÿ0-9 ]/g,' ').split(/\s+/).filter(Boolean).slice(0,2).map(function(w){return w[0];}).join('').toUpperCase(); }
+  function toast(msg){ var el=document.getElementById('rd-toast'); document.getElementById('rd-toast-txt').textContent=msg||'Fait'; el.classList.add('show'); clearTimeout(el._t); el._t=setTimeout(function(){el.classList.remove('show');},2600); }
+  function cssEsc(s){ return (window.CSS&&CSS.escape)?CSS.escape(s):(''+s).replace(/"/g,'\\"'); }
 
-  function render(items){
-    var add='<div class="radar-add"><input id="rc-input" placeholder="Nom exact d\'une entreprise (ex. attributaire vu dans les résultats)…"><button class="button" id="rc-add"><i data-icon="plus" data-size="15"></i> Surveiller</button></div>';
-    var list;
-    if(!items.length){
-      list='<div class="radar-empty"><div class="es-ico"><i data-icon="radar" data-size="26"></i></div><strong>Aucun concurrent surveillé</strong>Ajoutez une entreprise ci-dessus. Astuce : copiez un nom d\'attributaire depuis la page <a class="link" href="entreprises.html">Entreprises</a> ou un résultat.</div>';
-    } else {
-      list=items.map(function(r){
-        var last=r.dernier_gain;
-        var meta=(r.marches_gagnes||0)+' marché'+(r.marches_gagnes>1?'s':'')+' gagné'+(r.marches_gagnes>1?'s':'')+' · '+(r.soumissions||0)+' soumission'+(r.soumissions>1?'s':'');
-        var lastline=last?('<div class="rc-meta">Dernier gain : '+esc((last.objet||'').slice(0,60))+(last.date?' · '+esc(last.date):'')+'</div>'):'';
-        return '<div class="rc-card"><div class="rc-ava">'+initials(r.entreprise_nom)+'</div>'
-          +'<div class="rc-main"><div class="rc-nom">'+esc(r.entreprise_nom)+'</div><div class="rc-meta">'+meta+'</div>'+lastline+'</div>'
-          +'<button class="rc-x" title="Retirer" data-rm="'+esc(r.entreprise_nom)+'"><i data-icon="x" data-size="16"></i></button></div>';
-      }).join('');
+  // ---------- state ----------
+  var DEFAULT_PREFS = {
+    whatsapp: true, email: true, sms: true,
+    whatsapp_num: '+226 70 24 18 12', email_addr: 'contact@entreprise.bf',
+    keywords: ['BTP', 'Génie civil', 'Pavage', 'Réhabilitation'],
+    sectors: ['BTP, Génie Civil & Construction', 'Eau, Forages & Assainissement'],
+    authority_names: ['SONABEL', 'ONEA'],
+    budget_min: 20, budget_max: 500,
+    authorities: 'Toutes les institutions burkinabè + Bailleurs'
+  };
+  function loadPrefs(){
+    try{
+      var raw=localStorage.getItem('vbf_radar_prefs');
+      if(raw) return Object.assign({}, DEFAULT_PREFS, JSON.parse(raw));
+    }catch(e){}
+    return Object.assign({}, DEFAULT_PREFS, {keywords: DEFAULT_PREFS.keywords.slice()});
+  }
+  function loadArchived(){
+    try{ return JSON.parse(localStorage.getItem('vbf_radar_archived')||'{}')||{}; }catch(e){ return {}; }
+  }
+  function saveArchived(map){
+    try{ localStorage.setItem('vbf_radar_archived', JSON.stringify(map)); }catch(e){}
+  }
+  var ST = { items:[], ents:null, activeName:null, alertName:null, prefs:loadPrefs(), editAuth:false, archivedIds:loadArchived(), showArchived:false, suiviIds:{} };
+
+  function loadEnts(){
+    if(ST.ents) return Promise.resolve(ST.ents);
+    if(DEMO){ ST.ents=DEMO_ENTS; return Promise.resolve(ST.ents); }
+    return fetch('/api/data/resultats-live').then(function(r){return r.ok?r.json():null;})
+      .then(function(d){
+        ST.ents=((d&&d.entreprises)||[]).map(function(e){
+          return {
+            nom:e.nom,
+            gagnes:e.gagnes||0,
+            soumissions:e.soumissions||0,
+            tel:e.tel||'',
+            ifu:e.ifu||'',
+            rccm:e.rccm||'',
+            ville:e.ville||''
+          };
+        });
+        return ST.ents;
+      })
+      .catch(function(){ ST.ents=[]; return ST.ents; });
+  }
+
+  // ---------- radar visuel ----------
+  function radarSVG(items){
+    var cx=150, cy=150, n=items.length;
+    var rings=[45,85,120,145].map(function(r){ return '<circle cx="150" cy="150" r="'+r+'" class="rd-ring"/>'; }).join('');
+    var cross='<line x1="150" y1="6" x2="150" y2="294" class="rd-cross"/><line x1="6" y1="150" x2="294" y2="150" class="rd-cross"/>';
+    var sweep='<g class="rd-sweep"><path d="M150,150 L150,8 A142,142 0 0,1 262,66 Z" class="rd-beam"/><line x1="150" y1="150" x2="150" y2="8" class="rd-line"/></g>';
+    var maxG=1; items.forEach(function(x){ if((x.marches_gagnes||0)>maxG) maxG=x.marches_gagnes; });
+    var blips=items.map(function(it,i){
+      var ang=(-90 + i*(360/Math.max(n,1)))*Math.PI/180;
+      var g=it.marches_gagnes||0;
+      var rr = 138 - Math.round((g/maxG)*88);           // plus de victoires = plus proche du centre (menace)
+      var x=cx+rr*Math.cos(ang), y=cy+rr*Math.sin(ang);
+      var recent = it.entreprise_nom===ST.alertName;
+      var active = it.entreprise_nom===ST.activeName;
+      return '<g class="rd-blip'+(recent?' recent':'')+(active?' active':'')+'" data-blip="'+esc(it.entreprise_nom)+'" transform="translate('+x.toFixed(1)+','+y.toFixed(1)+')">'
+        +(recent?'<circle r="6" class="rd-ripple"/>':'')
+        +'<circle r="6" class="rd-dot"/>'
+        +'<text y="-11" class="rd-lbl">'+esc(initials(it.entreprise_nom))+'</text></g>';
+    }).join('');
+    return '<svg viewBox="0 0 300 300" class="rd-svg"><defs><radialGradient id="rdg" cx="50%" cy="48%" r="52%">'
+      +'<stop offset="0%" stop-color="var(--primary)" stop-opacity="0.18"/><stop offset="100%" stop-color="var(--primary)" stop-opacity="0"/></radialGradient></defs>'
+      +'<circle cx="150" cy="150" r="145" class="rd-bg"/>'+rings+cross+sweep+blips
+      +'<circle cx="150" cy="150" r="4" class="rd-center"/></svg>';
+  }
+
+  // ---------- carte concurrent ----------
+  function compCard(it){
+    var g=it.marches_gagnes||0, s=it.soumissions||0, taux=s?Math.round(g/s*100):0;
+    var last=it.dernier_gain;
+    var lastLine = last ? '<div class="rc-last"><i data-icon="trophy" data-size="13"></i><span>Dernier gain : '+esc((last.objet||'Marché').slice(0,80))+(last.date?' · '+esc(last.date):'')+'</span></div>' : '';
+    return '<div class="rc-card" data-name="'+esc(it.entreprise_nom)+'">'
+      +'<div class="rc-ava">'+initials(it.entreprise_nom)+'</div>'
+      +'<div class="rc-main"><div class="rc-nom">'+esc(it.entreprise_nom)+'</div>'
+      +'<div class="rc-stats"><span><b>'+g+'</b> marché'+(g>1?'s':'')+' gagné'+(g>1?'s':'')+'</span><span><b>'+s+'</b> soumission'+(s>1?'s':'')+'</span><span><b>'+taux+'%</b> réussite</span></div>'
+      +'<div class="rc-bar"><i style="width:'+Math.min(taux,100)+'%"></i></div>'
+      +lastLine+'</div>'
+      +'<button class="rc-x" data-rm="'+esc(it.entreprise_nom)+'" title="Retirer du radar"><i data-icon="x" data-size="16"></i></button></div>';
+  }
+
+  // ---------- rendu principal ----------
+  function renderApp(){
+    // Alerte : 1er concurrent avec un dernier gain
+    ST.alertName=null;
+    var alertIt=null;
+    ST.items.forEach(function(it){ if(it.dernier_gain && !alertIt){ alertIt=it; ST.alertName=it.entreprise_nom; } });
+
+    if(!ST.items.length){
+      app.innerHTML=''
+        +'<div class="rd-wrap"><div class="rd-scope">'+radarSVG([])
+        +'<div class="rd-scope-foot">Aucun concurrent — ajoutez-en un pour l’afficher sur le radar.</div>'
+        +addBar()+suggRow()+'</div>'
+        +'<div><div class="rd-empty"><div class="es-ico"><i data-icon="radar" data-size="28"></i></div>'
+        +'<strong>Aucun concurrent surveillé</strong>Ajoutez une entreprise à gauche. Astuce : copiez un nom d’attributaire depuis la page <a class="link" href="entreprises.html">Entreprises</a> ou un résultat.</div></div></div>'
+        +radarPrefsSection()+interceptionsSection();
+      window.renderIcons(app); wire(); return;
     }
-    body.innerHTML=add+list;
-    window.renderIcons(body);
-    document.getElementById('rc-add').addEventListener('click', addOne);
-    document.getElementById('rc-input').addEventListener('keydown',function(e){ if(e.key==='Enter') addOne(); });
-    body.querySelectorAll('[data-rm]').forEach(function(b){ b.addEventListener('click',function(){
-      V.api('/api/radar/'+encodeURIComponent(b.getAttribute('data-rm')),{method:'DELETE'}).then(load);
-    }); });
-  }
-  function addOne(){
-    var inp=document.getElementById('rc-input'), nom=inp.value.trim(); if(nom.length<2) return;
-    V.api('/api/radar',{body:{entreprise_nom:nom}}).then(function(){ inp.value=''; if(window.toast)window.toast('Ajouté au radar ✓'); load(); })
-      .catch(function(e){ if(window.toast)window.toast((e.data&&e.data.detail)||'Entreprise introuvable'); });
-  }
-  function load(){ V.api('/api/radar').then(function(d){ render(d.results||[]); }); }
 
-  V.me().then(function(u){
-    if(!u){ body.innerHTML='<div class="radar-empty"><div class="es-ico"><i data-icon="radar" data-size="26"></i></div><strong>Connectez-vous</strong>Le radar concurrent est réservé aux membres.<div class="vbf-gate-actions" style="justify-content:center;margin-top:14px"><a class="button" href="login.html">Se connecter</a><a class="button ghost" href="register.html">Créer un compte</a></div></div>'; window.renderIcons(body); return; }
-    load();
-  });
+    var totGagnes=0; ST.items.forEach(function(it){ totGagnes+=(it.marches_gagnes||0); });
+    var stats='<div class="rd-stats">'
+      +'<div class="rd-stat"><div class="si"><i data-icon="radar" data-size="20"></i></div><div><div class="sv">'+ST.items.length+'</div><div class="sl">Concurrents surveillés</div></div></div>'
+      +'<div class="rd-stat gold"><div class="si"><i data-icon="trophy" data-size="20"></i></div><div><div class="sv">'+totGagnes+'</div><div class="sl">Marchés gagnés (cumul)</div></div></div>'
+      +'<div class="rd-stat"><div class="si"><i data-icon="bell-ring" data-size="20"></i></div><div><div class="sv" style="font-size:14px">'+(alertIt?esc(initials(alertIt.entreprise_nom)):'—')+'</div><div class="sl">'+(alertIt?'Dernier gain détecté':'Aucune alerte')+'</div></div></div>'
+      +'</div>';
+
+    var alert = alertIt ? '<div class="rd-alert"><div class="ai"><i data-icon="bell-ring" data-size="20"></i></div>'
+      +'<div class="am"><div class="at">Alerte radar <span class="abadge">NOUVEAU</span></div>'
+      +'<div class="ax"><b>'+esc(alertIt.entreprise_nom)+'</b> a remporté « '+esc((alertIt.dernier_gain.objet||'un marché').slice(0,70))+' »'+(alertIt.dernier_gain.date?' le '+esc(alertIt.dernier_gain.date):'')+'.</div></div>'
+      +(alertIt.dernier_gain.avis_id?'<a class="button" href="market.html?id='+encodeURIComponent(alertIt.dernier_gain.avis_id)+'"><i data-icon="file-text" data-size="15"></i> Voir le marché</a>':'')+'</div>' : '';
+
+    var scope='<div class="rd-scope">'+radarSVG(ST.items)
+      +'<div class="rd-scope-foot">'+ST.items.length+' entreprise'+(ST.items.length>1?'s':'')+' sur le radar · balayage en direct</div>'
+      +addBar()+suggRow()+'</div>';
+
+    var listCol='<div><div class="rc-head"><i data-icon="users" data-size="16"></i> Concurrents surveillés ('+ST.items.length+')</div>'
+      +'<div class="rc-list">'+ST.items.map(compCard).join('')+'</div></div>';
+
+    app.innerHTML=alert+stats+'<div class="rd-wrap">'+scope+listCol+'</div>'+radarPrefsSection()+interceptionsSection();
+    window.renderIcons(app);
+    wire();
+  }
+
+  function computeInterceptions(){
+    var mkts=(window.DATA&&window.DATA.markets)||[];
+    var p=ST.prefs;
+    var kws=(p.keywords||[]).map(function(k){return k.toLowerCase();});
+    var secs=(p.sectors||[]).map(function(s){return s.toLowerCase();});
+    var auths=(p.authority_names||[]).map(function(a){return a.toLowerCase();});
+    var minB=(p.budget_min||0)*1e6, maxB=(p.budget_max||1000)*1e6;
+    var out=[];
+    mkts.forEach(function(m){
+      if(!m || !m.id || m.status==='result') return;
+      var isArch=!!ST.archivedIds[m.id];
+      if(!ST.showArchived && isArch) return;
+      if(ST.showArchived && !isArch) return;
+      var dl=window.daysLeft?window.daysLeft(m):null;
+      if(dl!==null && dl<0) return;
+      var txt=((m.title||'')+' '+(m.sector||'')+' '+(m.authority||'')+' '+(m.ref||'')).toLowerCase();
+      var score=50;
+      var matched=false;
+      kws.forEach(function(k){ if(k && txt.indexOf(k)>-1){ matched=true; score+=12; } });
+      if(secs.length && m.sector && secs.some(function(s){ var w=s.split(' ')[0]; return w && m.sector.toLowerCase().indexOf(w)>-1; })){ matched=true; score+=18; }
+      if(auths.length && m.authority && auths.some(function(a){ return a && m.authority.toLowerCase().indexOf(a)>-1; })){ matched=true; score+=16; }
+      var amt=Number(m.amount)||0;
+      if(amt>0){
+        if(amt>=minB && (p.budget_max>=1000 || amt<=maxB)) score+=10;
+        else if(matched) score-=8;
+      }
+      if(!matched && (kws.length || secs.length || auths.length)) return;
+      score=Math.max(60, Math.min(99, score));
+      out.push({ m:m, score:score, dl:dl, archived:isArch });
+    });
+    out.sort(function(a,b){ return b.score-a.score || ((a.dl!=null?a.dl:999)-(b.dl!=null?b.dl:999)); });
+    return out.slice(0, 15);
+  }
+
+  function interceptionsSection(){
+    var rows=computeInterceptions();
+    var archCount=Object.keys(ST.archivedIds||{}).length;
+    var fcfa=window.fmtAmount||function(n){return n?Number(n).toLocaleString('fr-FR')+' FCFA':'Selon DAO';};
+    var body=rows.length ? rows.map(function(it){
+      var m=it.m, sc=it.score, dl=it.dl;
+      var scCls=sc>=90?'background:#ecfdf5;color:#065f46':'background:#fef3c7;color:#92400e';
+      var dlCls=(dl!==null&&dl<=5)?'background:#fee2e2;color:#991b1b':((dl!==null&&dl<=10)?'background:#fef3c7;color:#92400e':'background:var(--bg-alt);color:var(--ink)');
+      var dlTxt=dl===null?'Voir DAO':(dl===0?'Aujourd’hui':dl+' Jours');
+      var isFol=!!ST.suiviIds[m.id];
+      return '<tr>'
+        +'<td style="white-space:nowrap"><div style="font-weight:700;color:var(--primary)">'+esc(m.bulletin||'Avis')+'</div><div style="font-family:monospace;font-size:11px;color:var(--muted)">'+esc((m.ref||m.id||'').slice(0,24))+'</div></td>'
+        +'<td style="max-width:320px;font-weight:600;color:var(--ink)">'+esc((m.title||'Avis de marché').slice(0,110))+'</td>'
+        +'<td><div style="font-weight:600">'+esc((m.authority||'—').slice(0,42))+'</div><div style="font-size:11.5px;color:var(--muted)">'+esc(m.sector||'Services divers')+'</div></td>'
+        +'<td style="white-space:nowrap;font-weight:700">'+(m.amount?fcfa(m.amount):'<span style="color:var(--muted);font-weight:500">Selon DAO</span>')+'</td>'
+        +'<td style="white-space:nowrap"><div style="display:flex;align-items:center;gap:8px"><span style="padding:3px 9px;border-radius:999px;font-weight:800;font-size:11.5px;'+scCls+'">'+sc+'%</span><div style="width:42px;height:6px;background:var(--bg-alt);border-radius:999px;overflow:hidden"><div style="height:100%;width:'+sc+'%;background:var(--primary)"></div></div></div></td>'
+        +'<td style="white-space:nowrap"><span style="padding:3px 9px;border-radius:999px;font-weight:700;font-size:11.5px;'+dlCls+'">'+dlTxt+'</span></td>'
+        +'<td style="white-space:nowrap;text-align:right"><div style="display:inline-flex;gap:6px;align-items:center">'
+        +'<button type="button" class="button '+(isFol?'':'secondary-button')+'" data-follow-id="'+esc(m.id)+'" style="padding:5px 10px;font-size:11.5px;border-radius:999px" title="Suivre directement ce marché"><i data-icon="'+(isFol?'check':'bookmark')+'" data-size="13"></i> '+(isFol?'Suivi ✓':'Suivre')+'</button>'
+        +'<button type="button" class="button ghost" data-arch-id="'+esc(m.id)+'" style="padding:5px 9px;font-size:11.5px;border-radius:999px" title="'+(it.archived?'Restaurer':'Archiver cette alerte')+'"><i data-icon="'+(it.archived?'rotate-ccw':'archive')+'" data-size="13"></i></button>'
+        +'<a class="button" style="padding:5px 11px;font-size:11.5px;border-radius:999px" href="market.html?id='+encodeURIComponent(m.id)+'">DAO →</a>'
+        +'</div></td>'
+        +'</tr>';
+    }).join('') : '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)">'+(ST.showArchived?'Aucune alerte archivée.':'Aucun avis ouvert ne correspond exactement à vos filtres actuels. Élargissez vos mots-clés, secteurs ou fourchette de budget.')+'</td></tr>';
+
+    return '<section class="rd-tbl-card">'
+      +'<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px">'
+      +'<div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><h3 style="margin:0;font-size:17px;font-weight:800;color:var(--primary)">Dernières alertes interceptées par le radar</h3>'
+      +'<span style="padding:2px 9px;border-radius:999px;background:#ecfdf5;color:#065f46;font-size:11px;font-weight:800">Flux DGCMEF &amp; Autorités · '+rows.length+' correspondance'+(rows.length>1?'s':'')+'</span></div>'
+      +'<p style="margin:3px 0 0;font-size:12.5px;color:var(--muted)">Opportunités ouvertes classées selon vos mots-clés, secteurs, autorités et fourchette de budget.</p></div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<button type="button" class="button '+(ST.showArchived?'':'secondary-button')+'" id="rd-toggle-arch" style="padding:6px 12px;font-size:12px;border-radius:999px"><i data-icon="archive" data-size="14"></i> '+(ST.showArchived?'Voir actives':'Archivées ('+archCount+')')+'</button>'
+      +'<button type="button" class="button secondary-button" id="rd-export-csv" style="padding:6px 12px;font-size:12px;border-radius:999px"><i data-icon="download" data-size="14"></i> Exporter CSV</button>'
+      +'<button type="button" class="button secondary-button" id="rd-refresh-alerts" style="padding:6px 12px;font-size:12px;border-radius:999px"><i data-icon="refresh-cw" data-size="14"></i> Actualiser</button>'
+      +'</div></div>'
+      +'<div style="overflow-x:auto"><table class="rd-tbl"><thead><tr>'
+      +'<th>Bulletin / Réf</th><th>Objet du Marché</th><th>Autorité / Secteur</th><th>Budget Est.</th><th>Score Match</th><th>Échéance</th><th>Action</th>'
+      +'</tr></thead><tbody>'+body+'</tbody></table></div></section>';
+  }
+
+  function radarPrefsSection(){
+    var p=ST.prefs;
+    var kwSuggs=['Solaire','Forage','Ordinateurs'].filter(function(k){ return p.keywords.indexOf(k)<0; });
+    var allSectors=['BTP, Génie Civil & Construction','Eau, Forages & Assainissement','Énergie & Électricité','Informatique & Télécoms','Santé, Médical & Pharmacie','Véhicules, Transports & Hydrocarbures','Agriculture, Élevage & Forêt','Études, Audit & Conseil','Mobilier & Fournitures de Bureau','Restauration & Événementiel','Gardiennage & Sécurité','Agréments & Répertoires Fournisseurs','Services Généraux & Divers'];
+    var secList=p.sectors||[];
+    var secOpts=allSectors.filter(function(s){ return secList.indexOf(s)<0; });
+    var authList=p.authority_names||[];
+    var authOpts=[
+      'Toutes les institutions burkinabè + Bailleurs',
+      'Ministères & Directions centrales',
+      'Mairies, Régions & Collectivités',
+      'Sociétés d’État (SONABEL, ONEA, SONABHY)',
+      'Bailleurs internationaux (BAD, BOAD, UE, BM)'
+    ];
+    return '<section class="rd-prefs-grid">'
+      // Carte Gauche : Canaux d'alerte immédiats
+      +'<div class="rd-pref-card">'
+      +'<div class="rd-pref-head"><div class="rd-pref-ico green"><i data-icon="smartphone" data-size="18"></i></div>'
+      +'<div><h3>Vos Canaux d’alerte immédiats</h3><p>Soyez le premier informé dès publication au Journal Officiel ou en ligne.</p></div></div>'
+      +'<div class="rd-chan-row"><div class="rd-chan-ico"><i data-icon="message-square" data-size="17"></i></div>'
+      +'<div class="rd-chan-body"><div class="rd-chan-title">WhatsApp Direct Pro <span class="rd-chan-tag inst">Instantané</span></div>'
+      +'<div class="rd-chan-sub">'+esc(p.whatsapp_num)+' (Reçoit les alertes &lt; 10 min)</div></div>'
+      +'<label class="rd-switch"><input type="checkbox" id="rd-ch-wa"'+(p.whatsapp?' checked':'')+'><span></span></label></div>'
+      +'<div class="rd-chan-row"><div class="rd-chan-ico"><i data-icon="mail" data-size="17"></i></div>'
+      +'<div class="rd-chan-body"><div class="rd-chan-title">Email Synthèse Matinale <span class="rd-chan-tag daily">Quotidien</span></div>'
+      +'<div class="rd-chan-sub">'+esc(p.email_addr)+' (Synthèse matinale à 07h30)</div></div>'
+      +'<label class="rd-switch"><input type="checkbox" id="rd-ch-em"'+(p.email?' checked':'')+'><span></span></label></div>'
+      +'<div class="rd-chan-row"><div class="rd-chan-ico amber"><i data-icon="asterisk" data-size="17"></i></div>'
+      +'<div class="rd-chan-body"><div class="rd-chan-title">Alertes SMS d’urgence <span class="rd-chan-tag add">Additifs</span></div>'
+      +'<div class="rd-chan-sub">Pour reports de dates limites &amp; rectificatifs DAO</div></div>'
+      +'<label class="rd-switch"><input type="checkbox" id="rd-ch-sms"'+(p.sms?' checked':'')+'><span class="amber"></span></label></div>'
+      +'<div class="rd-chan-foot"><span>Vérifiez vos canaux avec un envoi fictif :</span><button type="button" class="button secondary-button" id="rd-test-alerts" style="padding:6px 12px;font-size:12px">Tester mes alertes</button></div>'
+      +'</div>'
+      // Carte Droite : Filtres d'écoute de votre radar
+      +'<div class="rd-pref-card">'
+      +'<div class="rd-pref-head"><div class="rd-pref-ico amber"><i data-icon="filter" data-size="18"></i></div>'
+      +'<div><h3>Filtres d’écoute de votre radar</h3><p>Ajustez l’algorithme de scoring pour filtrer les marchés non pertinents.</p></div></div>'
+      +'<div><div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px">Mots-clés surveillés en priorité :</div>'
+      +'<div class="rd-kw-list">'
+      +p.keywords.map(function(k){ return '<span class="rd-kw-chip">'+esc(k)+' <button type="button" data-kw-rm="'+esc(k)+'" title="Retirer">×</button></span>'; }).join('')
+      +kwSuggs.map(function(k){ return '<button type="button" class="rd-kw-sugg" data-kw-add="'+esc(k)+'">+ '+esc(k)+'</button>'; }).join('')
+      +'<button type="button" class="rd-kw-add" id="rd-kw-custom">+ Ajouter mot-clé</button>'
+      +'</div></div>'
+      +'<div><div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px">Secteurs d’activité surveillés :</div>'
+      +'<div class="rd-kw-list">'
+      +(secList.length ? secList.map(function(s){ return '<span class="rd-kw-chip" style="background:#0f766e">'+esc(s)+' <button type="button" data-sec-rm="'+esc(s)+'" title="Retirer">×</button></span>'; }).join('') : '<span style="font-size:11.5px;color:var(--muted)">Tous les secteurs</span>')
+      +(secOpts.length ? '<select id="rd-sec-add" style="font-size:12px;padding:4px 9px;border-radius:999px;border:1px dashed var(--line);background:var(--surface);color:var(--ink);cursor:pointer"><option value="">+ Ajouter secteur…</option>'+secOpts.map(function(s){return '<option value="'+esc(s)+'">'+esc(s)+'</option>';}).join('')+'</select>' : '')
+      +'</div></div>'
+      +'<div><div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;margin-bottom:6px"><span>Fourchette de budget estimé :</span><span id="rd-budget-lbl" style="color:#b45309;font-weight:800">'+p.budget_min+'M — '+p.budget_max+'M FCFA</span></div>'
+      +'<input type="range" id="rd-budget-range" min="5" max="1000" step="5" value="'+p.budget_max+'" style="width:100%;accent-color:#064e3b;cursor:pointer">'
+      +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:2px"><span>5M FCFA (Petits marchés)</span><span>250M FCFA</span><span>1 Milliard+ FCFA</span></div></div>'
+      +'<div><div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:6px">Autorités contractantes ciblées :</div>'
+      +'<div class="rd-auth-box"><div style="display:flex;gap:10px;align-items:center;min-width:0"><i data-icon="landmark" data-size="18" style="color:var(--primary);flex-shrink:0"></i>'
+      +'<div style="min-width:0">'
+      +(ST.editAuth
+        ? '<select id="rd-auth-sel" style="font-size:12.5px;padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface)">'+authOpts.map(function(o){return '<option value="'+esc(o)+'"'+(o===p.authorities?' selected':'')+'>'+esc(o)+'</option>';}).join('')+'</select>'
+        : '<div style="font-size:13px;font-weight:800;color:var(--ink)">'+esc(p.authorities)+'</div><div style="font-size:11.5px;color:var(--muted)">Ministères, Mairies, Sociétés d’État (SONABEL, ONEA) + BAD, BOAD, UE</div>')
+      +'</div></div>'
+      +'<button type="button" class="link" id="rd-auth-edit" style="border:0;background:none;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0">'+(ST.editAuth?'OK':'Modifier')+'</button></div>'
+      +'<div class="rd-kw-list" style="margin-top:8px">'
+      +authList.map(function(a){ return '<span class="rd-kw-chip" style="background:#1e3a8a">'+esc(a)+' <button type="button" data-auth-rm="'+esc(a)+'" title="Retirer">×</button></span>'; }).join('')
+      +'<button type="button" class="rd-kw-add" id="rd-auth-custom">+ Ajouter une autorité</button>'
+      +'</div></div>'
+      +'<div style="display:flex;justify-content:flex-end;margin-top:auto"><button type="button" class="button" id="rd-save-prefs" style="background:#064e3b;border-radius:999px;padding:10px 22px">Enregistrer les paramètres du radar</button></div>'
+      +'</div></section>';
+  }
+
+  function addBar(){
+    return '<div class="rd-add" style="position:relative"><input id="rd-input" placeholder="Nom, téléphone, IFU ou RCCM d’une entreprise…" autocomplete="off">'
+      +'<button class="button" id="rd-add"><i data-icon="plus" data-size="15"></i> Surveiller</button>'
+      +'<div id="rd-ac-list" style="display:none;position:absolute;top:100%;left:0;right:0;margin-top:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 28px rgba(0,0,0,.14);max-height:340px;overflow-y:auto;z-index:50"></div>'
+      +'</div>';
+  }
+
+  function suggRow(){
+    if(!ST.ents || !ST.ents.length) return '';
+    var watched={}; ST.items.forEach(function(it){watched[it.entreprise_nom]=1;});
+    var top=ST.ents.filter(function(e){return e.nom && !watched[e.nom] && (e.gagnes||0)>0;})
+      .sort(function(a,b){return (b.gagnes||0)-(a.gagnes||0);}).slice(0,5);
+    if(!top.length) return '';
+    return '<div class="rd-sugg"><span class="lbl">Suggestions</span>'
+      +top.map(function(e){ return '<button class="rd-chip" data-add="'+esc(e.nom)+'"><i data-icon="plus" data-size="12"></i> '+esc(e.nom.length>26?e.nom.slice(0,26)+'…':e.nom)+' <span class="g">'+e.gagnes+'</span></button>'; }).join('')
+      +'</div>';
+  }
+
+  // ---------- actions ----------
+  function addName(nom){
+    nom=(nom||'').trim(); if(nom.length<2){ toast('Saisissez un nom d’entreprise'); return; }
+    if(ST.items.some(function(it){return it.entreprise_nom===nom;})){ toast('Déjà sur le radar'); return; }
+    if(DEMO){
+      var ref=(ST.ents||[]).filter(function(e){return e.nom===nom;})[0];
+      ST.items.unshift({entreprise_nom:nom, marches_gagnes:(ref&&ref.gagnes)||1, soumissions:((ref&&ref.gagnes)||1)+3, dernier_gain:null});
+      renderApp(); toast('Ajouté au radar ✓'); return;
+    }
+    V.api('/api/radar',{body:{entreprise_nom:nom}}).then(function(){ toast('Ajouté au radar ✓'); load(); })
+      .catch(function(e){ toast((e&&e.data&&e.data.detail)||'Entreprise introuvable dans l’historique'); });
+  }
+  function removeName(nom){
+    if(DEMO){ ST.items=ST.items.filter(function(it){return it.entreprise_nom!==nom;}); renderApp(); toast('Retiré du radar'); return; }
+    V.api('/api/radar/'+encodeURIComponent(nom),{method:'DELETE'}).then(function(){ toast('Retiré du radar'); load(); });
+  }
+
+  // ---------- events ----------
+  function wire(){
+    var addBtn=document.getElementById('rd-add'), input=document.getElementById('rd-input'), acList=document.getElementById('rd-ac-list');
+    function hideAc(){ if(acList){ acList.style.display='none'; acList.innerHTML=''; } }
+    function showAc(q){
+      if(!acList || !ST.ents || !ST.ents.length){ hideAc(); return; }
+      q=(q||'').trim().toLowerCase();
+      if(q.length<2){ hideAc(); return; }
+      var qCompact=q.replace(/\s+/g,'');
+      var matches=ST.ents.filter(function(e){
+        if(!e.nom) return false;
+        var hay=(e.nom+' '+(e.tel||'')+' '+(e.ifu||'')+' '+(e.rccm||'')).toLowerCase();
+        return hay.indexOf(q)>-1 || hay.replace(/\s+/g,'').indexOf(qCompact)>-1;
+      });
+      matches.sort(function(a,b){
+        var ap=a.nom.toLowerCase().indexOf(q)===0?0:1;
+        var bp=b.nom.toLowerCase().indexOf(q)===0?0:1;
+        if(ap!==bp) return ap-bp;
+        return (b.gagnes||0)-(a.gagnes||0);
+      });
+      var top=matches.slice(0,12);
+      if(!top.length){
+        acList.innerHTML='<div style="padding:12px 14px;font-size:12.5px;color:var(--muted)">Aucune entreprise trouvée pour « '+esc(q)+' ».</div>';
+        acList.style.display='block';
+        return;
+      }
+      acList.innerHTML=top.map(function(e){
+        var meta=[];
+        if(e.tel) meta.push('<b>Tél :</b> '+esc(e.tel));
+        if(e.ifu) meta.push('<b>IFU :</b> '+esc(e.ifu));
+        if(e.rccm) meta.push('<b>RCCM :</b> '+esc(e.rccm));
+        if(!meta.length && e.ville) meta.push(esc(e.ville));
+        return '<button type="button" class="rd-ac-item" data-ac-nom="'+esc(e.nom)+'" style="width:100%;text-align:left;padding:10px 14px;border:0;border-bottom:1px solid var(--line);background:transparent;cursor:pointer;display:flex;flex-direction:column;gap:3px">'
+          +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
+          +'<span style="font-weight:700;font-size:13.5px;color:var(--ink)">'+esc(e.nom)+'</span>'
+          +'<span style="font-size:11px;font-weight:700;color:var(--primary);background:var(--bg-alt);padding:2px 7px;border-radius:99px;white-space:nowrap">'+(e.gagnes||0)+' gagnés / '+(e.soumissions||0)+'</span>'
+          +'</div>'
+          +(meta.length?'<div style="font-size:11.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:10px">'+meta.join('')+'</div>':'<div style="font-size:11px;color:var(--muted)">Tél / IFU / RCCM non renseignés</div>')
+          +'</button>';
+      }).join('');
+      acList.style.display='block';
+      acList.querySelectorAll('[data-ac-nom]').forEach(function(btn){
+        btn.addEventListener('click',function(){
+          var nom=this.getAttribute('data-ac-nom');
+          hideAc();
+          if(input) input.value='';
+          addName(nom);
+        });
+      });
+    }
+    if(addBtn) addBtn.addEventListener('click',function(){ hideAc(); addName(input.value); if(input) input.value=''; });
+    if(input){
+      input.addEventListener('input',function(){ showAc(this.value); });
+      input.addEventListener('focus',function(){ if(this.value.trim().length>=2) showAc(this.value); });
+      input.addEventListener('keydown',function(e){ if(e.key==='Enter'){ hideAc(); addName(this.value); this.value=''; } else if(e.key==='Escape'){ hideAc(); } });
+    }
+    document.addEventListener('click',function(e){
+      if(acList && !acList.contains(e.target) && e.target!==input) hideAc();
+    });
+
+    app.querySelectorAll('[data-add]').forEach(function(b){ b.addEventListener('click',function(){ addName(this.getAttribute('data-add')); }); });
+    app.querySelectorAll('[data-rm]').forEach(function(b){ b.addEventListener('click',function(){ removeName(this.getAttribute('data-rm')); }); });
+
+    // Clic sur un blip -> surligne la carte correspondante
+    app.querySelectorAll('[data-blip]').forEach(function(g){
+      g.addEventListener('click',function(){
+        var nom=this.getAttribute('data-blip'); ST.activeName=nom;
+        var card=app.querySelector('.rc-card[data-name="'+cssEsc(nom)+'"]');
+        app.querySelectorAll('.rc-card').forEach(function(c){c.classList.remove('flash');});
+        app.querySelectorAll('.rd-blip').forEach(function(x){x.classList.toggle('active', x.getAttribute('data-blip')===nom);});
+        if(card){ card.classList.add('flash'); card.scrollIntoView({behavior:'smooth',block:'center'}); setTimeout(function(){card.classList.remove('flash');},1600); }
+      });
+    });
+
+    // Canaux d'alerte & filtres radar
+    var testBtn=document.getElementById('rd-test-alerts');
+    if(testBtn) testBtn.addEventListener('click',function(){ toast('Alerte de test envoyée sur vos canaux actifs ✓'); });
+    app.querySelectorAll('[data-kw-rm]').forEach(function(b){
+      b.addEventListener('click',function(){
+        var kw=this.getAttribute('data-kw-rm');
+        ST.prefs.keywords=ST.prefs.keywords.filter(function(x){return x!==kw;});
+        renderApp();
+      });
+    });
+    app.querySelectorAll('[data-kw-add]').forEach(function(b){
+      b.addEventListener('click',function(){
+        var kw=this.getAttribute('data-kw-add');
+        if(ST.prefs.keywords.indexOf(kw)<0) ST.prefs.keywords.push(kw);
+        renderApp();
+      });
+    });
+    var kwCustom=document.getElementById('rd-kw-custom');
+    if(kwCustom) kwCustom.addEventListener('click',function(){
+      var kw=prompt('Ajouter un mot-clé prioritaire (ex. Solaire, Forage, Informatique) :');
+      if(kw && kw.trim()){
+        kw=kw.trim();
+        if(ST.prefs.keywords.indexOf(kw)<0) ST.prefs.keywords.push(kw);
+        renderApp();
+      }
+    });
+    app.querySelectorAll('[data-sec-rm]').forEach(function(b){
+      b.addEventListener('click',function(){
+        var sec=this.getAttribute('data-sec-rm');
+        ST.prefs.sectors=(ST.prefs.sectors||[]).filter(function(x){return x!==sec;});
+        renderApp();
+      });
+    });
+    var secAdd=document.getElementById('rd-sec-add');
+    if(secAdd) secAdd.addEventListener('change',function(){
+      if(this.value){
+        ST.prefs.sectors=ST.prefs.sectors||[];
+        if(ST.prefs.sectors.indexOf(this.value)<0) ST.prefs.sectors.push(this.value);
+        renderApp();
+      }
+    });
+    app.querySelectorAll('[data-auth-rm]').forEach(function(b){
+      b.addEventListener('click',function(){
+        var au=this.getAttribute('data-auth-rm');
+        ST.prefs.authority_names=(ST.prefs.authority_names||[]).filter(function(x){return x!==au;});
+        renderApp();
+      });
+    });
+    var authCustom=document.getElementById('rd-auth-custom');
+    if(authCustom) authCustom.addEventListener('click',function(){
+      var au=prompt('Ajouter une autorité contractante ciblée (ex. CNSS, MEM, Mairie de Ouagadougou) :');
+      if(au && au.trim()){
+        au=au.trim();
+        ST.prefs.authority_names=ST.prefs.authority_names||[];
+        if(ST.prefs.authority_names.indexOf(au)<0) ST.prefs.authority_names.push(au);
+        renderApp();
+      }
+    });
+    var bRange=document.getElementById('rd-budget-range'), bLbl=document.getElementById('rd-budget-lbl');
+    if(bRange) bRange.addEventListener('input',function(){
+      ST.prefs.budget_max=parseInt(this.value,10)||500;
+      if(bLbl) bLbl.textContent=ST.prefs.budget_min+'M — '+ST.prefs.budget_max+'M FCFA';
+    });
+    var authEdit=document.getElementById('rd-auth-edit');
+    if(authEdit) authEdit.addEventListener('click',function(){
+      if(ST.editAuth){
+        var sel=document.getElementById('rd-auth-sel');
+        if(sel) ST.prefs.authorities=sel.value;
+      }
+      ST.editAuth=!ST.editAuth;
+      renderApp();
+    });
+    var savePrefs=document.getElementById('rd-save-prefs');
+    if(savePrefs) savePrefs.addEventListener('click',function(){
+      var wa=document.getElementById('rd-ch-wa'), em=document.getElementById('rd-ch-em'), sms=document.getElementById('rd-ch-sms');
+      if(wa) ST.prefs.whatsapp=wa.checked;
+      if(em) ST.prefs.email=em.checked;
+      if(sms) ST.prefs.sms=sms.checked;
+      try{ localStorage.setItem('vbf_radar_prefs', JSON.stringify(ST.prefs)); }catch(e){}
+      toast('Paramètres du radar enregistrés ✓');
+      renderApp();
+    });
+    var refAlerts=document.getElementById('rd-refresh-alerts');
+    if(refAlerts) refAlerts.addEventListener('click',function(){ renderApp(); toast('Alertes actualisées ✓'); });
+    var togArch=document.getElementById('rd-toggle-arch');
+    if(togArch) togArch.addEventListener('click',function(){ ST.showArchived=!ST.showArchived; renderApp(); });
+    app.querySelectorAll('[data-arch-id]').forEach(function(b){
+      b.addEventListener('click',function(){
+        var id=this.getAttribute('data-arch-id');
+        if(ST.archivedIds[id]){ delete ST.archivedIds[id]; toast('Alerte restaurée ✓'); }
+        else { ST.archivedIds[id]=1; toast('Alerte archivée ✓'); }
+        saveArchived(ST.archivedIds);
+        renderApp();
+      });
+    });
+    app.querySelectorAll('[data-follow-id]').forEach(function(b){
+      b.addEventListener('click',function(){
+        var id=this.getAttribute('data-follow-id');
+        if(DEMO){ ST.suiviIds[id]=!ST.suiviIds[id]; renderApp(); toast(ST.suiviIds[id]?'Marché suivi ✓':'Retiré des suivis'); return; }
+        var isFol=!!ST.suiviIds[id];
+        var req=isFol?V.api('/api/suivis/'+encodeURIComponent(id),{method:'DELETE'}):V.api('/api/suivis',{body:{avis_id:id}});
+        req.then(function(){
+          if(isFol) delete ST.suiviIds[id]; else ST.suiviIds[id]=1;
+          renderApp();
+          toast(isFol?'Retiré de vos suivis':'Ajouté à vos suivis ✓');
+        }).catch(function(){ toast('Connexion requise pour suivre un marché'); });
+      });
+    });
+    var expCsv=document.getElementById('rd-export-csv');
+    if(expCsv) expCsv.addEventListener('click',function(){
+      var rows=computeInterceptions();
+      if(!rows.length){ toast('Aucune alerte à exporter'); return; }
+      var lines=[['Bulletin','Reference','Objet','Autorite','Secteur','Budget_FCFA','Score_Match','Echeance_Jours'].join(';')];
+      rows.forEach(function(it){
+        var m=it.m;
+        lines.push([m.bulletin||'',m.ref||m.id||'',(m.title||'').replace(/;/g,','),(m.authority||'').replace(/;/g,','),m.sector||'',m.amount||'',it.score+'%',it.dl!=null?it.dl:''].map(function(v){return '"'+(''+v).replace(/"/g,'""')+'"';}).join(';'));
+      });
+      var blob=new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv;charset=utf-8;'});
+      var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='radar-alertes.csv'; a.click();
+      toast('Export CSV téléchargé ✓');
+    });
+  }
+
+  // ---------- chargement ----------
+  function load(){
+    if(DEMO){ ST.items=DEMO_ITEMS.slice(); renderApp(); return; }
+    Promise.all([
+      V.api('/api/radar'),
+      V.api('/api/suivis/ids').catch(function(){ return []; })
+    ]).then(function(res){
+      ST.items=(res[0]&&res[0].results)||[];
+      ST.suiviIds={};
+      (Array.isArray(res[1])?res[1]:[]).forEach(function(id){ ST.suiviIds[id]=1; });
+      renderApp();
+    }).catch(function(){ app.innerHTML='<p class="muted" style="text-align:center;padding:40px">Impossible de charger le radar.</p>'; });
+  }
+  function loginPrompt(){
+    app.innerHTML='<div class="rd-empty"><div class="es-ico"><i data-icon="radar" data-size="28"></i></div>'
+      +'<strong>Connectez-vous</strong>Le radar concurrent est réservé aux membres. Surveillez vos concurrents et soyez alerté dès qu’ils remportent un marché.'
+      +'<div class="vbf-gate-actions" style="justify-content:center;margin-top:16px"><a class="button" href="login.html?next=radar.html">Se connecter</a><a class="button ghost" href="register.html?next=radar.html">Créer un compte</a></div></div>';
+    window.renderIcons(app);
+  }
+
+  // ---------- données de démonstration (?demo=1) ----------
+  var DEMO_ITEMS=[
+    {entreprise_nom:'Consortium Faso BTP & Hydraulique SARL',marches_gagnes:12,soumissions:28,dernier_gain:{objet:'Aménagement hydro-agricole de 120 ha — vallée du Sourou',date:'02/11/2026'}},
+    {entreprise_nom:'E.G.T.C SARL',marches_gagnes:9,soumissions:22,dernier_gain:{objet:'Forages positifs — zone Boussouma (Centre-Nord)',date:'14/10/2026'}},
+    {entreprise_nom:'Sahel Énergie SARL',marches_gagnes:7,soumissions:19,dernier_gain:{objet:'Fourniture de 80 groupes électrogènes 50 kVA',date:'28/10/2026'}},
+    {entreprise_nom:'BAMO SARL',marches_gagnes:6,soumissions:15,dernier_gain:{objet:'Réseau AEP — commune de Dédougou',date:'30/09/2026'}},
+    {entreprise_nom:'Groupement SOGEA-Sahel',marches_gagnes:4,soumissions:11,dernier_gain:null}
+  ];
+  var DEMO_ENTS=[
+    {nom:'Consortium Faso BTP & Hydraulique SARL',gagnes:12},{nom:'E.G.T.C SARL',gagnes:9},
+    {nom:'Sahel Énergie SARL',gagnes:7},{nom:'BAMO SARL',gagnes:6},{nom:'Groupement SOGEA-Sahel',gagnes:4},
+    {nom:'ASMO Développement',gagnes:5},{nom:'C.M. BTP Burkina',gagnes:3},{nom:'Agro Sahel Services',gagnes:7},
+    {nom:'Faso Digital Solutions',gagnes:4},{nom:'Entreprise Kaboré & Fils',gagnes:8}
+  ];
+
+  // ---------- lancement ----------
+  if(DEMO){ loadEnts().then(load); }
+  else {
+    V.me().then(function(u){
+      if(!u){ loginPrompt(); return; }
+      loadEnts().then(load);
+    });
+  }
 })();
 </script>
 <script src="assets/shell.js"></script>

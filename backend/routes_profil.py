@@ -38,6 +38,26 @@ class ProfilIn(BaseModel):
     marches_gagnes: Optional[int] = None
 
 
+def _ensure_user_details(conn) -> None:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS user_details (
+            user_id INTEGER PRIMARY KEY,
+            nom_entreprise TEXT,
+            secteur_principal TEXT,
+            secteurs_secondaires TEXT,
+            annee_creation INTEGER,
+            ville TEXT,
+            pays TEXT DEFAULT 'Burkina Faso',
+            ifu TEXT,
+            rccm TEXT,
+            forme_juridique TEXT,
+            fonction_poste TEXT,
+            maj_le TEXT
+        )
+    """)
+    conn.commit()
+
+
 def _load_profil(conn, user_id: int) -> Optional[dict]:
     row = conn.execute("SELECT * FROM profils_candidature WHERE user_id = ?", (user_id,)).fetchone()
     if not row:
@@ -51,12 +71,135 @@ def _load_profil(conn, user_id: int) -> Optional[dict]:
     return d
 
 
+class IdentiteIn(BaseModel):
+    nom_entreprise: Optional[str] = None
+    secteur_principal: Optional[str] = None
+    secteurs_secondaires: Optional[str] = None
+    annee_creation: Optional[int] = None
+    ville: Optional[str] = None
+    pays: Optional[str] = "Burkina Faso"
+    ifu: Optional[str] = None
+    rccm: Optional[str] = None
+    forme_juridique: Optional[str] = None
+    nom_complet: Optional[str] = None
+    organisation: Optional[str] = None
+    fonction_poste: Optional[str] = None
+    telephone: Optional[str] = None
+
+
+@router.get("/entreprises/search")
+def search_entreprises_autocomplete(q: str = ""):
+    q = (q or "").strip()
+    if len(q) < 2:
+        return {"results": []}
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            """SELECT nom_canonique, ifu, rccm, telephone, email, ville, secteurs_json, nb_soumissions, nb_gagnes
+               FROM entreprises
+               WHERE nom_canonique LIKE ? OR ifu LIKE ? OR rccm LIKE ?
+               ORDER BY nb_gagnes DESC, nb_soumissions DESC
+               LIMIT 12""",
+            (f"%{q}%", f"%{q}%", f"%{q}%"),
+        ).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            try:
+                secs = json.loads(d.get("secteurs_json") or "[]")
+            except Exception:
+                secs = []
+            nom_up = (d.get("nom_canonique") or "").upper()
+            forme = "SARL" if "SARL" in nom_up else ("SUARL" if "SUARL" in nom_up else ("SAS" if " SAS" in nom_up else ("SA" if " SA" in nom_up or nom_up.endswith(" SA") else ("GIE" if "GIE" in nom_up else ""))))
+            out.append({
+                "nom": d.get("nom_canonique"),
+                "ifu": d.get("ifu") or "",
+                "rccm": d.get("rccm") or "",
+                "telephone": d.get("telephone") or "",
+                "ville": d.get("ville") or "",
+                "secteurs": secs,
+                "forme_juridique": forme,
+                "nb_soumissions": d.get("nb_soumissions") or 0,
+                "nb_gagnes": d.get("nb_gagnes") or 0,
+            })
+        return {"results": out}
+    finally:
+        conn.close()
+
+
 @router.get("/profil")
 def get_profil(user: dict = Depends(require_user)):
     conn = get_db()
     try:
+        _ensure_user_details(conn)
         p = _load_profil(conn, user["id"])
-        return {"profil": p, "complet": bool(p and p.get("secteurs"))}
+        u_row = conn.execute(
+            "SELECT id, email, nom, organisation, telephone, plan_id, role, cree_le FROM users WHERE id = ?",
+            (user["id"],),
+        ).fetchone()
+        det_row = conn.execute("SELECT * FROM user_details WHERE user_id = ?", (user["id"],)).fetchone()
+        return {
+            "profil": p,
+            "complet": bool(p and p.get("secteurs")),
+            "user": dict(u_row) if u_row else user,
+            "details": dict(det_row) if det_row else {},
+        }
+    finally:
+        conn.close()
+
+
+@router.put("/profil/identite")
+def put_identite(body: IdentiteIn, user: dict = Depends(require_user)):
+    conn = get_db()
+    try:
+        _ensure_user_details(conn)
+        if body.nom_complet is not None or body.organisation is not None or body.telephone is not None:
+            conn.execute(
+                """UPDATE users
+                   SET nom = COALESCE(?, nom),
+                       organisation = COALESCE(?, organisation),
+                       telephone = COALESCE(?, telephone)
+                   WHERE id = ?""",
+                (
+                    body.nom_complet.strip() if body.nom_complet else None,
+                    body.organisation.strip() if body.organisation is not None else None,
+                    body.telephone.strip() if body.telephone is not None else None,
+                    user["id"],
+                ),
+            )
+        conn.execute(
+            """INSERT INTO user_details
+                 (user_id, nom_entreprise, secteur_principal, secteurs_secondaires, annee_creation,
+                  ville, pays, ifu, rccm, forme_juridique, fonction_poste, maj_le)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?, CURRENT_TIMESTAMP)
+               ON CONFLICT(user_id) DO UPDATE SET
+                 nom_entreprise=excluded.nom_entreprise,
+                 secteur_principal=excluded.secteur_principal,
+                 secteurs_secondaires=excluded.secteurs_secondaires,
+                 annee_creation=excluded.annee_creation,
+                 ville=excluded.ville,
+                 pays=excluded.pays,
+                 ifu=excluded.ifu,
+                 rccm=excluded.rccm,
+                 forme_juridique=excluded.forme_juridique,
+                 fonction_poste=excluded.fonction_poste,
+                 maj_le=CURRENT_TIMESTAMP""",
+            (
+                user["id"],
+                body.nom_entreprise,
+                body.secteur_principal,
+                body.secteurs_secondaires,
+                body.annee_creation,
+                body.ville,
+                body.pays or "Burkina Faso",
+                body.ifu,
+                body.rccm,
+                body.forme_juridique,
+                body.fonction_poste,
+            ),
+        )
+        conn.commit()
+        return {"ok": True}
     finally:
         conn.close()
 
@@ -111,10 +254,19 @@ def _days_left(date_limite: Optional[str]) -> Optional[int]:
     if not date_limite:
         return None
     try:
-        d = datetime.strptime(date_limite.strip()[:10], "%d/%m/%Y")
-        return (d.date() - datetime.now().date()).days
+        import re
+        s = date_limite.strip()
+        m = re.search(r'(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})', s)
+        if m:
+            d = datetime(int(m.group(3)), int(m.group(2)), int(m.group(1))).date()
+            return (d - datetime.now().date()).days
+        m_iso = re.search(r'(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})', s)
+        if m_iso:
+            d = datetime(int(m_iso.group(1)), int(m_iso.group(2)), int(m_iso.group(3))).date()
+            return (d - datetime.now().date()).days
     except Exception:
-        return None
+        pass
+    return None
 
 
 @router.get("/moi/fil")

@@ -72,11 +72,12 @@ def ajouter(body: DocIn, user: dict = Depends(require_user)):
     conn = get_db()
     try:
         cur = conn.execute(
-            "INSERT INTO coffre_documents (user_id, nom, type, taille, chemin) VALUES (?,?,?,?,?)",
+            "INSERT INTO coffre_documents (user_id, nom, type, taille, chemin) VALUES (?,?,?,?,?) RETURNING id",
             (user["id"], body.nom[:120], body.type, len(data), str(path)),
         )
+        new_id = cur.fetchone()[0]
         conn.commit()
-        return {"ok": True, "id": cur.lastrowid, "taille": len(data)}
+        return {"ok": True, "id": new_id, "taille": len(data)}
     finally:
         conn.close()
 

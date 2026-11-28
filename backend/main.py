@@ -11,13 +11,20 @@ Assemble l'application FastAPI du SaaS Veille BF :
 
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException
+import json
+from datetime import datetime
+from urllib.parse import unquote
+
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.config import CORS_ORIGINS, WEB_DIR
 from backend.db import init_saas_schema
+from backend.deps import get_current_user_optional, plan_of
+from backend.plans import plan_at_least
+from backend.routes_admin import router as admin_router
 from backend.routes_auth import router as auth_router
 from backend.routes_billing import router as billing_router
 from backend.routes_alertes import router as alertes_router
@@ -33,6 +40,7 @@ from backend.routes_profil import router as profil_router
 from backend.routes_public import router as public_router
 from backend.routes_radar import router as radar_router
 from backend.routes_suivis import router as suivis_router
+from backend.routes_support import router as support_router
 
 app = FastAPI(
     title="Veille BF — SaaS Marchés Publics",
@@ -57,6 +65,7 @@ def _startup() -> None:
 
 # ----------------- Routers API -----------------
 app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(billing_router)
 app.include_router(data_router)
 app.include_router(suivis_router)
@@ -71,6 +80,16 @@ app.include_router(equipe_router)
 app.include_router(coffre_router)
 app.include_router(api_v1_router)
 app.include_router(public_router)
+app.include_router(support_router)
+
+
+@app.middleware("http")
+async def _no_cache_ui(request: Request, call_next):
+    response = await call_next(request)
+    p = request.url.path.lower()
+    if p.endswith(".html") or p.endswith("shell.js") or p.endswith("ui.js"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return response
 
 
 # ----------------- Pages & redirections -----------------
@@ -83,7 +102,10 @@ LEGACY_REDIRECTS = {
     "authority": "/authorities.html",
     "applications": "/markets.html",
     "capability-profile": "/dashboard.html",
-    "assistant": "/search.html",
+    "assistant": "/markets.html",
+    "directory": "/dashboard.html",
+    "intelligence": "/authorities.html",
+    "search": "/markets.html",
     "recommendations": "/markets.html",
     "alerts": "/markets.html",
 }
@@ -146,3 +168,87 @@ def serve_friendly(slug: str):
 
 if (WEB_DIR / "assets").exists():
     app.mount("/assets", StaticFiles(directory=str(WEB_DIR / "assets")), name="assets")
+
+PDF_DIR = WEB_DIR.parent.parent / "telechargements_pdf"
+CALENDAR_FILE = WEB_DIR.parent.parent / "data_bulletins_calendrier.json"
+
+_CALENDAR_CACHE: dict = {"mtime": 0, "map": {}}
+
+def _lookup_bulletin_date(filename: str) -> tuple[int | None, int | None, str | None]:
+    """Extrait l'année, le mois et la date d'un bulletin PDF depuis data_bulletins_calendrier.json."""
+    if not CALENDAR_FILE.exists():
+        return None, None, None
+    try:
+        cur_mtime = CALENDAR_FILE.stat().st_mtime
+        if cur_mtime != _CALENDAR_CACHE["mtime"]:
+            data = json.loads(CALENDAR_FILE.read_text(encoding="utf-8"))
+            m = {}
+            for b in data:
+                fn = (b.get("pdf_filename") or "").strip().lower()
+                if fn:
+                    m[fn] = (b.get("year"), b.get("month"), b.get("date"))
+            _CALENDAR_CACHE["mtime"] = cur_mtime
+            _CALENDAR_CACHE["map"] = m
+        clean_key = filename.strip().lower()
+        return _CALENDAR_CACHE["map"].get(clean_key, (None, None, None))
+    except Exception:
+        return None, None, None
+
+
+@app.get("/bulletins_pdf/{filename:path}")
+def serve_bulletin_pdf(filename: str, request: Request):
+    """
+    Sert les bulletins PDF officiels avec contrôle d'accès SaaS :
+    - Bulletin du mois en cours : accessible à tous (gratuit / visiteur).
+    - Archives des mois antérieurs : réservées aux offres Pro et Entreprise.
+    """
+    clean_fn = unquote(filename).strip()
+    pdf_path = (PDF_DIR / clean_fn).resolve()
+
+    # Contrôle de sécurité contre le directory traversal
+    if not pdf_path.exists() or not pdf_path.is_file() or not pdf_path.is_relative_to(PDF_DIR.resolve()):
+        raise HTTPException(status_code=404, detail="Bulletin PDF introuvable.")
+
+    b_year, b_month, b_date = _lookup_bulletin_date(clean_fn)
+    now = datetime.now()
+    current_year, current_month = now.year, now.month
+
+    # Si le bulletin est du mois en cours, accès libre pour tous
+    is_current_month = (b_year == current_year and b_month == current_month)
+
+    if not is_current_month:
+        user = get_current_user_optional(request)
+        user_plan = plan_of(user)
+
+        if not plan_at_least(user_plan, "pro"):
+            accept = request.headers.get("accept", "")
+            if "text/html" in accept:
+                return RedirectResponse(
+                    url=f"/pricing.html?gate=archives_pdf&bulletin={clean_fn}",
+                    status_code=303,
+                )
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail={
+                    "code": "upgrade_required",
+                    "feature": "archives_pdf",
+                    "bulletin": clean_fn,
+                    "bulletin_date": b_date,
+                    "plan_requis": "pro",
+                    "plan_actuel": user_plan,
+                    "message": (
+                        "L'accès aux archives PDF des mois précédents est réservé aux offres Pro et Entreprise. "
+                        "L'offre gratuite permet de consulter les bulletins officiels du mois en cours."
+                    ),
+                },
+            )
+
+    return FileResponse(
+        path=pdf_path,
+        media_type="application/pdf",
+        filename=clean_fn,
+        content_disposition_type="inline",
+    )
+
+
+

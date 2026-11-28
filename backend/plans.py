@@ -21,6 +21,7 @@ FEAT_ALERTES = "alertes"                 # alertes email/WhatsApp
 FEAT_EXPORT = "export"                   # export CSV / Excel
 FEAT_API = "api"                         # accès API + clés
 FEAT_EQUIPE = "equipe"                   # multi-utilisateurs
+FEAT_ARCHIVES_PDF = "archives_pdf"       # accès illimité aux archives PDF des mois antérieurs
 
 # -1 = illimité
 PLANS: dict[str, dict] = {
@@ -40,6 +41,7 @@ PLANS: dict[str, dict] = {
             FEAT_EXPORT: False,
             FEAT_API: False,
             FEAT_EQUIPE: False,
+            FEAT_ARCHIVES_PDF: False,
         },
         "quotas": {
             "recherches_par_jour": 15,
@@ -49,12 +51,14 @@ PLANS: dict[str, dict] = {
         "limites": {
             "utilisateurs": "1",
             "historique": "30 derniers jours",
+            "bulletins_pdf": "Mois en cours uniquement",
             "recherches_jour": "15 / jour",
             "fiches_jour": "10 / jour",
         },
         "mise_en_avant": [
             "Recherche de base dans les marchés",
             "Jusqu'à 10 fiches détaillées par jour",
+            "Bulletins PDF officiels du mois en cours",
             "Aperçu des résultats d'attribution",
         ],
     },
@@ -74,6 +78,7 @@ PLANS: dict[str, dict] = {
             FEAT_EXPORT: True,
             FEAT_API: False,
             FEAT_EQUIPE: False,
+            FEAT_ARCHIVES_PDF: True,
         },
         "quotas": {
             "recherches_par_jour": -1,
@@ -83,12 +88,14 @@ PLANS: dict[str, dict] = {
         "limites": {
             "utilisateurs": "1",
             "historique": "Complet",
+            "bulletins_pdf": "Archives complètes (toutes les années)",
             "recherches_jour": "Illimité",
             "fiches_jour": "Illimité",
         },
         "mise_en_avant": [
             "Recherche et fiches illimitées",
             "Résultats et attributaires complets",
+            "Tous les bulletins PDF officiels (archives complètes)",
             "Répertoire des entreprises soumissionnaires",
             "Alertes email & WhatsApp",
             "Export CSV / Excel",
@@ -110,6 +117,7 @@ PLANS: dict[str, dict] = {
             FEAT_EXPORT: True,
             FEAT_API: True,
             FEAT_EQUIPE: True,
+            FEAT_ARCHIVES_PDF: True,
         },
         "quotas": {
             "recherches_par_jour": -1,
@@ -119,6 +127,7 @@ PLANS: dict[str, dict] = {
         "limites": {
             "utilisateurs": "Jusqu'à 5",
             "historique": "Complet",
+            "bulletins_pdf": "Archives complètes (toutes les années)",
             "recherches_jour": "Illimité",
             "fiches_jour": "Illimité",
         },

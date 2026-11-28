@@ -36,29 +36,73 @@ class SuiviPatch(BaseModel):
 
 @router.get("")
 def list_suivis(user: dict = Depends(require_user)):
-    """Liste des marchés suivis, enrichie des infos marché + présence d'un résultat."""
+    """Cockpit des marchés suivis : infos DAO complètes, avancement dossier, lots & résultat."""
     conn = get_db()
     try:
         rows = conn.execute(
             """
             SELECT s.avis_id, s.statut, s.note, s.cree_le,
-                   a.objet_marche        AS objet,
-                   a.autorite_contractante AS autorite,
-                   a.secteur_activite    AS secteur,
-                   a.type_procedure      AS type,
-                   a.date_limite_depot   AS date_limite,
-                   a.budget_previsionnel_fcfa AS budget,
-                   a.reference_dossier   AS reference,
+                   a.objet_marche                 AS objet,
+                   a.autorite_contractante        AS autorite,
+                   a.ministere_tutelle            AS ministere,
+                   a.secteur_activite             AS secteur,
+                   a.categorie_marche             AS categorie,
+                   a.type_procedure               AS type,
+                   a.numero_bulletin              AS bulletin,
+                   a.pages                        AS pages,
+                   a.date_parution                AS date_parution,
+                   a.date_limite_depot            AS date_limite,
+                   a.heure_limite_depot           AS heure_limite,
+                   a.budget_previsionnel_fcfa     AS budget,
+                   a.garantie_soumission_fcfa     AS caution,
+                   a.cout_acquisition_dossier_fcfa AS cout_dao,
+                   a.source_financement           AS financement,
+                   a.exercice_budgetaire          AS exercice,
+                   a.reference_dossier            AS reference,
+                   a.nombre_lots                  AS nombre_lots,
+                   a.allotissement_type           AS allotissement,
+                   a.lieu_depot_offres            AS lieu_depot,
+                   a.date_heure_ouverture_plis    AS date_ouverture,
+                   a.lieu_ouverture_plis          AS lieu_ouverture,
+                   a.delai_execution_jours        AS delai_execution,
+                   a.delai_validite_offres_jours  AS delai_validite,
+                   a.qualifications_ou_agrement   AS qualifications,
+                   a.contacts_renseignements      AS contacts,
+                   a.marche_reserve               AS marche_reserve,
+                   a.signataire_nom_fonction      AS signataire,
+                   d.id                           AS dossier_id,
+                   (SELECT COUNT(*) FROM dossier_pieces dp WHERE dp.dossier_id = d.id) AS pieces_total,
+                   (SELECT SUM(CASE WHEN dp.coche = 1 THEN 1 ELSE 0 END) FROM dossier_pieces dp WHERE dp.dossier_id = d.id) AS pieces_cochees,
                    (SELECT r.id FROM resultats_marches r
-                      WHERE r.annonce_avis_id = s.avis_id LIMIT 1) AS resultat_id
+                      WHERE r.annonce_avis_id = s.avis_id LIMIT 1) AS resultat_id,
+                   (SELECT rl.attributaire_nom FROM resultats_lots rl
+                      JOIN resultats_marches rm ON rm.id = rl.resultat_id
+                      WHERE rm.annonce_avis_id = s.avis_id AND rl.attributaire_nom IS NOT NULL
+                      LIMIT 1) AS attributaire_nom,
+                   (SELECT COALESCE(rl.montant_attribue_max_fcfa, rl.montant_attribue_min_fcfa)
+                      FROM resultats_lots rl
+                      JOIN resultats_marches rm ON rm.id = rl.resultat_id
+                      WHERE rm.annonce_avis_id = s.avis_id
+                      LIMIT 1) AS montant_attribue,
+                   (SELECT MAX(rl.est_infructueux) FROM resultats_lots rl
+                      JOIN resultats_marches rm ON rm.id = rl.resultat_id
+                      WHERE rm.annonce_avis_id = s.avis_id) AS est_infructueux
             FROM suivis s
             LEFT JOIN annonces_avis a ON a.id = s.avis_id
+            LEFT JOIN dossiers d ON d.user_id = s.user_id AND d.avis_id = s.avis_id
             WHERE s.user_id = ?
             ORDER BY s.cree_le DESC
             """,
             (user["id"],),
         ).fetchall()
-        return {"results": [dict(r) for r in rows], "total": len(rows)}
+        results = [dict(r) for r in rows]
+        cockpit_stats = {
+            "total": len(results),
+            "je_soumissionne": sum(1 for x in results if x.get("statut") == "je_soumissionne"),
+            "avec_resultat": sum(1 for x in results if x.get("resultat_id")),
+            "budget_cumule": sum(int(x["budget"]) for x in results if x.get("budget")),
+        }
+        return {"results": results, "total": len(results), "cockpit_stats": cockpit_stats}
     finally:
         conn.close()
 

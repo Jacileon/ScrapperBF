@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Administration · VEILLE BF</title>
+<link rel="icon" href="assets/logo.svg">
+<link rel="stylesheet" href="assets/app.css">
+<link rel="stylesheet" href="assets/app-shell.css">
+<link rel="stylesheet" href="assets/saas.css">
+<style>
+.ad-head{margin-bottom:16px}
+.ad-eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--primary);background:var(--primary-light);padding:4px 11px;border-radius:999px}
+.ad-head h1{font-size:28px;margin:10px 0 6px;color:var(--primary)}
+.ad-head .sub{color:var(--muted);font-size:14px}
+.ad-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+@media(max-width:900px){.ad-stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.ad-stats{grid-template-columns:1fr}}
+.ad-stat{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 15px;box-shadow:var(--shadow-sm)}
+.ad-stat .si{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--primary-light);color:var(--primary)}
+.ad-stat.gold .si{background:var(--accent-light);color:var(--accent)}
+.ad-stat.blue .si{background:var(--blue-light);color:var(--blue)}
+.ad-stat .sv{font-size:22px;font-weight:800;line-height:1}
+.ad-stat .sl{font-size:11.5px;color:var(--muted)}
+.ad-sub{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;font-size:12.5px;color:var(--muted)}
+.ad-chip{display:inline-flex;align-items:center;gap:6px;background:var(--bg-alt);border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-weight:700;color:var(--ink)}
+.ad-tabs{display:flex;gap:7px;border-bottom:1px solid var(--line);margin-bottom:14px;overflow-x:auto}
+.ad-tab{flex-shrink:0;font-size:13.5px;font-weight:700;padding:9px 14px;border:none;background:none;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
+.ad-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+.ad-toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.ad-toolbar input{flex:1;min-width:200px;padding:10px 13px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:14px}
+.ad-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+table.ad-table{width:100%;border-collapse:collapse;font-size:13px}
+.ad-table th,.ad-table td{padding:11px 13px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+.ad-table th{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);background:var(--bg-alt)}
+.ad-table tr:last-child td{border-bottom:none}
+.ad-table tr:hover td{background:var(--bg-alt)}
+.ad-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;padding:2px 9px;border-radius:999px}
+.ad-badge.admin{background:var(--accent-light);color:var(--accent)}
+.ad-badge.gratuit{background:var(--bg-alt);color:var(--muted)}
+.ad-badge.pro{background:var(--primary-light);color:var(--primary)}
+.ad-badge.entreprise{background:var(--blue-light);color:var(--blue)}
+.ad-badge.active,.ad-badge.paye{background:#ecfdf5;color:#047857}
+.ad-badge.pending{background:var(--warning-light);color:var(--warning)}
+.ad-badge.echec,.ad-badge.expiree,.ad-badge.annule{background:var(--danger-light);color:var(--danger)}
+.ad-sel{padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:12px;font-weight:600}
+.ad-ibtn{background:none;border:1px solid var(--line);border-radius:8px;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);transition:.15s}
+.ad-ibtn:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-light)}
+.ad-ibtn.danger:hover{border-color:var(--danger);color:var(--danger);background:var(--danger-light)}
+.ad-ibtn.gold:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-light)}
+.ad-toast{position:fixed;bottom:24px;right:24px;z-index:60;display:flex;align-items:center;gap:9px;background:var(--primary);color:#fff;padding:11px 16px;border-radius:999px;box-shadow:var(--shadow);transform:translateY(60px);opacity:0;transition:.3s;pointer-events:none;font-size:13.5px;font-weight:600}
+.ad-toast.show{transform:translateY(0);opacity:1}
+.ad-empty{text-align:center;padding:40px;color:var(--muted)}
+.ad-gate{text-align:center;padding:60px 20px;color:var(--muted)}
+.ad-gate .es-ico{width:62px;height:62px;border-radius:17px;background:var(--danger-light);color:var(--danger);display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+.ad-gate strong{display:block;color:var(--ink);font-size:17px;margin-bottom:6px}
+</style>
+</head>
+<body>
+<div id="app" data-page="admin"></div>
+<main class="main" id="main-content">
+  <div class="ad-head">
+    <span class="ad-eyebrow"><i data-icon="shield-check" data-size="14"></i> Console d'administration</span>
+    <h1>Administration</h1>
+    <p class="sub">Pilotez les comptes, les offres, les paiements et le support de Veille BF.</p>
+  </div>
+  <div id="ad-app"><p class="muted" style="text-align:center;padding:50px">Chargement…</p></div>
+  <div class="app-footer"><span>Espace réservé aux administrateurs.</span><span>© 2026 Veille BF</span></div>
+</main>
+
+<div class="ad-toast" id="ad-toast"><i data-icon="check" data-size="16"></i><span id="ad-toast-txt">Fait</span></div>
+
+<script src="assets/icons.js"></script>
+<script src="assets/session.js"></script>
+<script>
+(function(){
+  var V=window.VBF, app=document.getElementById('ad-app');
+  var PLANS=['gratuit','pro','entreprise'];
+  function esc(s){ return (s==null?'':(''+s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function fcfa(n){ n=Number(n)||0; return n.toLocaleString('fr-FR')+' FCFA'; }
+  function fdate(s){ if(!s) return '—'; return (''+s).slice(0,10); }
+  function toast(m){ var e=document.getElementById('ad-toast'); document.getElementById('ad-toast-txt').textContent=m||'Fait'; e.classList.add('show'); clearTimeout(e._t); e._t=setTimeout(function(){e.classList.remove('show');},2500); }
+
+  var ST={tab:'users', stats:null, q:''};
+
+  function gate(){
+    app.innerHTML='<div class="ad-gate"><div class="es-ico"><i data-icon="lock" data-size="28"></i></div>'
+      +'<strong>Accès refusé</strong>Cette console est réservée aux administrateurs.'
+      +'<div class="vbf-gate-actions" style="justify-content:center;margin-top:16px"><a class="button" href="dashboard.html">Retour à l’accueil</a></div></div>';
+    window.renderIcons(app);
+  }
+
+  function statsBand(s){
+    var d=s.data||{};
+    return '<div class="ad-stats">'
+      +stat('users','', s.users_total, 'Utilisateurs')
+      +stat('shield','gold', s.admins, 'Administrateurs')
+      +stat('badge-check','blue', s.subs_active, 'Abonnements actifs')
+      +stat('coins','gold', fcfa(s.revenus_fcfa), 'Revenus encaissés')
+      +'</div>'
+      +'<div class="ad-sub">'
+      +chip('user-plus', s.nouveaux_7j+' nouveaux (7 j)')
+      +chip('receipt', s.paiements_en_attente+' paiement(s) en attente')
+      +chip('bookmark', s.suivis_total+' suivis')
+      +chip('briefcase-business', (d.annonces||0).toLocaleString('fr-FR')+' marchés')
+      +chip('trophy', (d.resultats||0).toLocaleString('fr-FR')+' résultats')
+      +chip('building2', (d.entreprises||0).toLocaleString('fr-FR')+' entreprises')
+      +chip('layout-dashboard', 'Offres : '+PLANS.map(function(p){return (s.by_plan&&s.by_plan[p]||0)+' '+p;}).join(' · '))
+      +'</div>';
+  }
+  function stat(ic,cls,val,lbl){ return '<div class="ad-stat '+cls+'"><div class="si"><i data-icon="'+ic+'" data-size="20"></i></div><div><div class="sv">'+esc(val)+'</div><div class="sl">'+lbl+'</div></div></div>'; }
+  function chip(ic,txt){ return '<span class="ad-chip"><i data-icon="'+ic+'" data-size="13"></i> '+esc(txt)+'</span>'; }
+
+  function tabs(){
+    var t=[['users','Utilisateurs','users'],['subs','Abonnements','badge-check'],['pay','Paiements','receipt'],['support','Support','message-circle']];
+    return '<div class="ad-tabs">'+t.map(function(x){ return '<button class="ad-tab'+(ST.tab===x[0]?' active':'')+'" data-tab="'+x[0]+'"><i data-icon="'+x[2]+'" data-size="14"></i> '+x[1]+'</button>'; }).join('')+'</div>';
+  }
+
+  function planBadge(p){ return '<span class="ad-badge '+esc(p)+'">'+esc(p)+'</span>'; }
+  function statutBadge(s){ return '<span class="ad-badge '+esc(s)+'">'+esc(s)+'</span>'; }
+
+  // ---- Utilisateurs ----
+  function renderUsers(){
+    var tb='<div class="ad-toolbar"><input id="ad-q" placeholder="Rechercher un email, nom, organisation…" value="'+esc(ST.q)+'"><button class="button secondary-button" id="ad-search"><i data-icon="search" data-size="15"></i> Rechercher</button></div>';
+    app.querySelector('#ad-body').innerHTML=tb+'<div class="ad-table-wrap"><table class="ad-table"><thead><tr><th>Email</th><th>Nom / Org.</th><th>Offre</th><th>Rôle</th><th>Suivis</th><th>Inscrit</th><th>Actions</th></tr></thead><tbody id="ad-rows"><tr><td colspan="7" class="ad-empty">Chargement…</td></tr></tbody></table></div>';
+    document.getElementById('ad-search').addEventListener('click',function(){ ST.q=document.getElementById('ad-q').value.trim(); loadUsers(); });
+    document.getElementById('ad-q').addEventListener('keydown',function(e){ if(e.key==='Enter'){ ST.q=this.value.trim(); loadUsers(); } });
+    window.renderIcons(app.querySelector('#ad-body'));
+    loadUsers();
+  }
+  function loadUsers(){
+    V.api('/api/admin/users'+(ST.q?('?q='+encodeURIComponent(ST.q)):'')).then(function(d){
+      var rows=d.results||[];
+      var body=document.getElementById('ad-rows');
+      if(!rows.length){ body.innerHTML='<tr><td colspan="7" class="ad-empty">Aucun utilisateur.</td></tr>'; return; }
+      body.innerHTML=rows.map(function(u){
+        var planSel='<select class="ad-sel" data-plan="'+u.id+'">'+PLANS.map(function(p){return '<option value="'+p+'"'+(u.plan_id===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select>';
+        var isAdmin=u.role==='admin';
+        return '<tr>'
+          +'<td><b>'+esc(u.email)+'</b></td>'
+          +'<td>'+esc(u.nom||'—')+(u.organisation?'<div class="muted" style="font-size:11px">'+esc(u.organisation)+'</div>':'')+'</td>'
+          +'<td>'+planSel+'</td>'
+          +'<td>'+(isAdmin?'<span class="ad-badge admin">admin</span>':'<span class="ad-badge gratuit">user</span>')+'</td>'
+          +'<td>'+(u.nb_suivis||0)+'</td>'
+          +'<td>'+fdate(u.cree_le)+'</td>'
+          +'<td style="display:flex;gap:6px">'
+          +'<button class="ad-ibtn gold" data-role="'+u.id+'" data-cur="'+u.role+'" title="'+(isAdmin?'Rétrograder en user':'Promouvoir admin')+'"><i data-icon="'+(isAdmin?'user':'shield')+'" data-size="15"></i></button>'
+          +'<button class="ad-ibtn danger" data-del="'+u.id+'" data-email="'+esc(u.email)+'" title="Supprimer"><i data-icon="x" data-size="15"></i></button>'
+          +'</td></tr>';
+      }).join('');
+      window.renderIcons(body);
+      body.querySelectorAll('[data-plan]').forEach(function(sel){ sel.addEventListener('change',function(){
+        V.api('/api/admin/users/'+this.getAttribute('data-plan'),{method:'PATCH',body:{plan_id:this.value}}).then(function(){ toast('Offre mise à jour'); loadStats(); }).catch(err); }); });
+      body.querySelectorAll('[data-role]').forEach(function(b){ b.addEventListener('click',function(){
+        var next=this.getAttribute('data-cur')==='admin'?'user':'admin';
+        V.api('/api/admin/users/'+this.getAttribute('data-role'),{method:'PATCH',body:{role:next}}).then(function(){ toast('Rôle mis à jour'); loadUsers(); loadStats(); }).catch(err); }); });
+      body.querySelectorAll('[data-del]').forEach(function(b){ b.addEventListener('click',function(){
+        if(!confirm('Supprimer définitivement '+this.getAttribute('data-email')+' et toutes ses données ?')) return;
+        V.api('/api/admin/users/'+this.getAttribute('data-del'),{method:'DELETE'}).then(function(){ toast('Utilisateur supprimé'); loadUsers(); loadStats(); }).catch(err); }); });
+    }).catch(err);
+  }
+
+  // ---- Abonnements ----
+  function renderSubs(){
+    app.querySelector('#ad-body').innerHTML='<div class="ad-table-wrap"><table class="ad-table"><thead><tr><th>#</th><th>Email</th><th>Offre</th><th>Statut</th><th>Cycle</th><th>Début</th><th>Fin</th></tr></thead><tbody id="ad-rows"><tr><td colspan="7" class="ad-empty">Chargement…</td></tr></tbody></table></div>';
+    V.api('/api/admin/subscriptions').then(function(d){
+      var rows=d.results||[], body=document.getElementById('ad-rows');
+      body.innerHTML=rows.length?rows.map(function(s){
+        return '<tr><td>'+s.id+'</td><td>'+esc(s.email||'—')+'</td><td>'+planBadge(s.plan_id)+'</td><td>'+statutBadge(s.statut)+'</td><td>'+esc(s.cycle||'—')+'</td><td>'+fdate(s.debut)+'</td><td>'+fdate(s.fin)+'</td></tr>';
+      }).join(''):'<tr><td colspan="7" class="ad-empty">Aucun abonnement.</td></tr>';
+      window.renderIcons(body);
+    }).catch(err);
+  }
+
+  // ---- Paiements ----
+  function renderPay(){
+    app.querySelector('#ad-body').innerHTML='<div class="ad-table-wrap"><table class="ad-table"><thead><tr><th>#</th><th>Email</th><th>Offre</th><th>Montant</th><th>Fournisseur</th><th>Statut</th><th>Date</th><th>Action</th></tr></thead><tbody id="ad-rows"><tr><td colspan="8" class="ad-empty">Chargement…</td></tr></tbody></table></div>';
+    V.api('/api/admin/payments').then(function(d){
+      var rows=d.results||[], body=document.getElementById('ad-rows');
+      body.innerHTML=rows.length?rows.map(function(p){
+        var sel='<select class="ad-sel" data-pay="'+p.id+'">'+['pending','paye','echec','annule'].map(function(st){return '<option value="'+st+'"'+(p.statut===st?' selected':'')+'>'+st+'</option>';}).join('')+'</select>';
+        return '<tr><td>'+p.id+'</td><td>'+esc(p.email||'—')+'</td><td>'+planBadge(p.plan_id||'—')+'</td><td><b>'+fcfa(p.montant_fcfa)+'</b></td><td>'+esc(p.provider||'—')+(p.operateur?' · '+esc(p.operateur):'')+'</td><td>'+statutBadge(p.statut)+'</td><td>'+fdate(p.cree_le)+'</td><td>'+sel+'</td></tr>';
+      }).join(''):'<tr><td colspan="8" class="ad-empty">Aucun paiement.</td></tr>';
+      window.renderIcons(body);
+      body.querySelectorAll('[data-pay]').forEach(function(s){ s.addEventListener('change',function(){
+        V.api('/api/admin/payments/'+this.getAttribute('data-pay'),{method:'PATCH',body:{statut:this.value}}).then(function(){ toast('Paiement mis à jour'); loadStats(); }).catch(err); }); });
+    }).catch(err);
+  }
+
+  // ---- Support ----
+  function renderSupport(){
+    app.querySelector('#ad-body').innerHTML='<div id="ad-tickets"><p class="muted" style="text-align:center;padding:30px">Chargement…</p></div>';
+    V.api('/api/support/tickets').then(function(d){
+      var rows=d.results||[], box=document.getElementById('ad-tickets');
+      if(!rows.length){ box.innerHTML='<div class="ad-empty">Aucun ticket de support.</div>'; return; }
+      box.innerHTML='<div class="ad-table-wrap"><table class="ad-table"><thead><tr><th>#</th><th>Sujet</th><th>Utilisateur</th><th>Catégorie</th><th>Statut</th><th>Messages</th><th>Màj</th></tr></thead><tbody>'
+        +rows.map(function(t){ return '<tr><td>'+t.id+'</td><td><b>'+esc(t.sujet)+'</b></td><td>'+esc(t.user_email||'—')+'</td><td>'+esc(t.categorie||'—')+'</td><td>'+statutBadge(t.statut)+'</td><td>'+((t.messages||[]).length)+'</td><td>'+fdate(t.maj_le)+'</td></tr>'; }).join('')
+        +'</tbody></table></div>';
+      window.renderIcons(box);
+    }).catch(function(){ document.getElementById('ad-tickets').innerHTML='<div class="ad-empty">Support indisponible.</div>'; });
+  }
+
+  function renderTab(){
+    if(ST.tab==='users') renderUsers();
+    else if(ST.tab==='subs') renderSubs();
+    else if(ST.tab==='pay') renderPay();
+    else renderSupport();
+  }
+
+  function shell(){
+    app.innerHTML=(ST.stats?statsBand(ST.stats):'')+tabs()+'<div id="ad-body"></div>';
+    window.renderIcons(app);
+    app.querySelectorAll('[data-tab]').forEach(function(b){ b.addEventListener('click',function(){ ST.tab=this.getAttribute('data-tab'); shell(); }); });
+    renderTab();
+  }
+  function loadStats(){ V.api('/api/admin/stats').then(function(s){ ST.stats=s; var band=document.querySelector('.ad-stats'); if(band){ shell(); } }).catch(function(){}); }
+  function err(e){ toast((e&&e.data&&e.data.detail)|| 'Action impossible'); }
+
+  V.me().then(function(u){
+    if(!u){ location.href='login.html?next=admin.html'; return; }
+    if((u.role||'user')!=='admin'){ gate(); return; }
+    V.api('/api/admin/stats').then(function(s){ ST.stats=s; shell(); }).catch(function(){ shell(); });
+  });
+})();
+</script>
+<script src="assets/shell.js"></script>
+</body>
+</html>

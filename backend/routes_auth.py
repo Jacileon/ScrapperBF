@@ -108,12 +108,12 @@ def register(body: RegisterIn, response: Response):
             )
         cur = conn.execute(
             """INSERT INTO users (email, password_hash, nom, organisation, telephone, plan_id, role)
-               VALUES (?, ?, ?, ?, ?, 'gratuit', 'user')""",
+               VALUES (?, ?, ?, ?, ?, 'gratuit', 'user') RETURNING id""",
             (body.email, hash_password(body.password), body.nom,
              body.organisation, body.telephone),
         )
+        user_id = cur.fetchone()[0]
         conn.commit()
-        user_id = cur.lastrowid
         # abonnement gratuit par défaut
         conn.execute(
             "INSERT INTO subscriptions (user_id, plan_id, statut, cycle) "

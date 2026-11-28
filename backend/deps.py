@@ -96,6 +96,17 @@ def require_user(request: Request) -> dict:
     return user
 
 
+def require_admin(request: Request) -> dict:
+    """Exige un administrateur (role == 'admin'), sinon 401/403."""
+    user = require_user(request)
+    if (user.get("role") or "user") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accès réservé aux administrateurs.",
+        )
+    return user
+
+
 def plan_of(user: Optional[dict]) -> str:
     return (user or {}).get("plan_id", "gratuit")
 

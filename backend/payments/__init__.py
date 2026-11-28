@@ -15,14 +15,14 @@ from __future__ import annotations
 
 from backend.config import PAYMENT_PROVIDER
 from backend.payments.base import PaymentProvider
+from backend.payments.leekpay import LeekPayProvider
 from backend.payments.manual import ManualProvider
 from backend.payments.sandbox import SandboxProvider
 
 _REGISTRY: dict[str, type[PaymentProvider]] = {
+    "leekpay": LeekPayProvider,
     "sandbox": SandboxProvider,
     "manual": ManualProvider,
-    # "cinetpay": CinetPayProvider,   # à ajouter le moment venu
-    # "ligdicash": LigdicashProvider,
 }
 
 

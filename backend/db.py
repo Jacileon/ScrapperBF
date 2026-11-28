@@ -3,27 +3,158 @@
 """
 backend/db.py
 =============
-Accès partagé à la base SQLite. Réutilise la base métier existante
-(marches_publics_burkina.db) et y ajoute les tables SaaS.
+Accès partagé à la base. En SaaS/production la base est **Postgres (Supabase)**
+via psycopg2 ; une couche de compatibilité expose l'API sqlite3 attendue par les
+routers (``conn.execute(sql, params).fetchone()``, lignes façon ``sqlite3.Row``,
+placeholders ``?``, ``INSERT OR IGNORE``…), ce qui évite de réécrire chaque requête.
+
+Si ``DATABASE_URL`` est vide, on retombe sur SQLite (dev hors-ligne / pipeline).
 """
 
-import sqlite3
+from __future__ import annotations
+
+import re
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Iterator
 
-from backend.config import DB_PATH
+from backend.config import DATABASE_URL, DB_PATH
+
+_USE_PG = bool(DATABASE_URL)
+IS_POSTGRES = _USE_PG  # exposé aux routers devant court-circuiter du DDL spécifique SQLite
 
 
-def get_db() -> sqlite3.Connection:
-    """Connexion SQLite avec Row factory et clés étrangères activées."""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
+# ===========================================================================
+# Backend Postgres (Supabase) — couche de compatibilité sqlite3
+# ===========================================================================
+if _USE_PG:
+    import psycopg2
+    import psycopg2.extensions
+
+    class SqliteRow:
+        """Ligne compatible sqlite3.Row : indexation par nom ou position, dict()."""
+        __slots__ = ("_keys", "_vals")
+
+        def __init__(self, keys, vals):
+            self._keys = keys
+            self._vals = vals
+
+        def keys(self):
+            return list(self._keys)
+
+        def __getitem__(self, k):
+            if isinstance(k, (int, slice)):
+                return self._vals[k]
+            return self._vals[self._keys.index(k)]
+
+        def get(self, k, default=None):
+            try:
+                return self[k]
+            except (KeyError, ValueError, IndexError):
+                return default
+
+        def __iter__(self):
+            return iter(self._vals)
+
+        def __len__(self):
+            return len(self._vals)
+
+        def __contains__(self, k):
+            return k in self._keys
+
+    _RE_IGNORE = re.compile(r"INSERT\s+OR\s+IGNORE\s+INTO", re.IGNORECASE)
+
+    def _translate(query: str, has_params: bool) -> str:
+        q = query
+        if "insert or ignore" in q.lower():
+            q = _RE_IGNORE.sub("INSERT INTO", q)
+            if "on conflict" not in q.lower():
+                q = q.rstrip().rstrip(";") + " ON CONFLICT DO NOTHING"
+        if has_params:
+            # psycopg2 n'interprète les % que si des paramètres sont fournis.
+            q = q.replace("%", "%%").replace("?", "%s")
+        return q
+
+    class _Cursor(psycopg2.extensions.cursor):
+        def execute(self, query, vars=None):
+            super().execute(_translate(query, bool(vars)), vars)
+            return self
+
+        def _cols(self):
+            return [d[0] for d in self.description] if self.description else []
+
+        def fetchone(self):
+            row = super().fetchone()
+            return SqliteRow(self._cols(), list(row)) if row is not None else None
+
+        def fetchall(self):
+            cols = self._cols()
+            return [SqliteRow(cols, list(r)) for r in super().fetchall()]
+
+        def fetchmany(self, size=None):
+            cols = self._cols()
+            rows = super().fetchmany(size) if size is not None else super().fetchmany()
+            return [SqliteRow(cols, list(r)) for r in rows]
+
+    class _Conn:
+        """Enveloppe psycopg2 offrant l'API sqlite3 utilisée par les routers."""
+
+        def __init__(self, raw):
+            self._raw = raw
+
+        def cursor(self):
+            return self._raw.cursor()
+
+        def execute(self, query, vars=None):
+            cur = self._raw.cursor()
+            cur.execute(query, vars)
+            return cur
+
+        def executescript(self, script):
+            cur = self._raw.cursor()
+            cur.execute(script)
+            return cur
+
+        def commit(self):
+            self._raw.commit()
+
+        def rollback(self):
+            self._raw.rollback()
+
+        def close(self):
+            try:
+                self._raw.close()
+            except Exception:
+                pass
+
+        @property
+        def closed(self):
+            return self._raw.closed
+
+        def __getattr__(self, name):
+            return getattr(self._raw, name)
+
+    def get_db():
+        """Connexion Postgres (Supabase) avec curseurs compatibles sqlite3."""
+        conn = psycopg2.connect(DATABASE_URL, cursor_factory=_Cursor)
+        return _Conn(conn)
+
+
+# ===========================================================================
+# Backend SQLite (dev hors-ligne / pipeline d'ingestion)
+# ===========================================================================
+else:
+    import sqlite3
+
+    def get_db() -> "sqlite3.Connection":
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
+        return conn
 
 
 @contextmanager
-def db_cursor(commit: bool = False) -> Iterator[sqlite3.Cursor]:
+def db_cursor(commit: bool = False) -> Iterator[object]:
     """Context manager : ouvre une connexion, fournit un curseur, ferme proprement."""
     conn = get_db()
     try:
@@ -35,236 +166,28 @@ def db_cursor(commit: bool = False) -> Iterator[sqlite3.Cursor]:
         conn.close()
 
 
-# ---------------------------------------------------------------------------
-# Schéma des tables SaaS (idempotent)
-# ---------------------------------------------------------------------------
-SAAS_SCHEMA_SQL = """
-CREATE TABLE IF NOT EXISTS plans (
-    id TEXT PRIMARY KEY,                 -- gratuit | pro | entreprise
-    nom TEXT NOT NULL,
-    sous_titre TEXT,
-    prix_mensuel_fcfa INTEGER NOT NULL DEFAULT 0,
-    prix_annuel_fcfa INTEGER NOT NULL DEFAULT 0,
-    features_json TEXT NOT NULL DEFAULT '{}',
-    ordre INTEGER NOT NULL DEFAULT 0,
-    actif INTEGER NOT NULL DEFAULT 1
-);
+def init_saas_schema(conn=None) -> None:
+    """
+    Garantit la présence du schéma.
+    - Postgres : le schéma est provisionné via backend/schema_postgres.sql (migration
+      Supabase). On ne le rejoue au démarrage que si VEILLEBF_INIT_SCHEMA=1
+      (évite le coût au démarrage à froid sur Vercel).
+    - SQLite : non géré ici (schéma créé par le pipeline / database_schema.py).
+    """
+    import os
 
-CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
-    nom TEXT,
-    organisation TEXT,
-    telephone TEXT,
-    plan_id TEXT NOT NULL DEFAULT 'gratuit',
-    role TEXT NOT NULL DEFAULT 'user',   -- user | admin
-    email_verifie INTEGER NOT NULL DEFAULT 0,
-    cree_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(plan_id) REFERENCES plans(id)
-);
-
-CREATE TABLE IF NOT EXISTS subscriptions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    plan_id TEXT NOT NULL,
-    statut TEXT NOT NULL DEFAULT 'active',  -- active | pending | expiree | annulee
-    cycle TEXT NOT NULL DEFAULT 'mensuel',  -- mensuel | annuel
-    debut TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    fin TIMESTAMP,
-    cree_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY(plan_id) REFERENCES plans(id)
-);
-
-CREATE TABLE IF NOT EXISTS payments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    subscription_id INTEGER,
-    plan_id TEXT,
-    cycle TEXT,
-    montant_fcfa INTEGER NOT NULL DEFAULT 0,
-    provider TEXT,                          -- sandbox | manual | cinetpay | ...
-    operateur TEXT,                         -- orange | moov | carte
-    telephone TEXT,
-    reference_interne TEXT UNIQUE,          -- notre identifiant de transaction
-    reference_externe TEXT,                 -- identifiant renvoyé par l'agrégateur
-    statut TEXT NOT NULL DEFAULT 'pending', -- pending | paye | echec | annule
-    payload_json TEXT,
-    cree_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    maj_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY(subscription_id) REFERENCES subscriptions(id) ON DELETE SET NULL
-);
-
-CREATE TABLE IF NOT EXISTS usage_counters (
-    user_id INTEGER NOT NULL,
-    periode TEXT NOT NULL,                  -- AAAA-MM-JJ (quotas journaliers) ou AAAA-MM
-    compteur_recherches INTEGER NOT NULL DEFAULT 0,
-    compteur_fiches INTEGER NOT NULL DEFAULT 0,
-    PRIMARY KEY (user_id, periode),
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS api_keys (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    cle_hash TEXT NOT NULL UNIQUE,
-    prefixe TEXT NOT NULL,                  -- début lisible de la clé (ex: vbf_live_ab12)
-    label TEXT,
-    actif INTEGER NOT NULL DEFAULT 1,
-    cree_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    derniere_utilisation TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS team_members (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    owner_user_id INTEGER NOT NULL,
-    member_user_id INTEGER NOT NULL,
-    role TEXT NOT NULL DEFAULT 'membre',    -- membre | admin
-    cree_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(owner_user_id, member_user_id),
-    FOREIGN KEY(owner_user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY(member_user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
--- Favoris : marchés suivis par un utilisateur (socle de l'alerte résultat).
-CREATE TABLE IF NOT EXISTS suivis (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    avis_id TEXT NOT NULL,                   -- référence annonces_avis(id)
-    statut TEXT NOT NULL DEFAULT 'suivi',    -- suivi | je_soumissionne | abandonne
-    note TEXT,
-    scoring_snapshot_json TEXT,              -- réservé (débrief vs estimation future)
-    cree_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, avis_id),
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
--- Notifications (alerte « boucle fermée » : marché suivi attribué, etc.).
-CREATE TABLE IF NOT EXISTS notifications (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    type TEXT NOT NULL,                      -- resultat | ...
-    avis_id TEXT,
-    resultat_id TEXT,
-    titre TEXT,
-    message TEXT,
-    payload_json TEXT,
-    lu INTEGER NOT NULL DEFAULT 0,
-    cree_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_subs_user ON subscriptions(user_id);
-CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(user_id);
-CREATE INDEX IF NOT EXISTS idx_payments_ref ON payments(reference_interne);
-CREATE INDEX IF NOT EXISTS idx_apikeys_user ON api_keys(user_id);
--- Profil de candidature de l'utilisateur (personnalisation + scoring).
-CREATE TABLE IF NOT EXISTS profils_candidature (
-    user_id INTEGER PRIMARY KEY,
-    secteurs TEXT,                           -- JSON : liste de secteurs
-    region TEXT,
-    budget_min INTEGER,
-    budget_max INTEGER,
-    agrements TEXT,                           -- texte libre / JSON
-    anciennete_annees INTEGER,
-    en_groupement INTEGER NOT NULL DEFAULT 0,
-    marches_soumis INTEGER NOT NULL DEFAULT 0,
-    marches_gagnes INTEGER NOT NULL DEFAULT 0,
-    maj_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
--- Radar concurrent : entreprises surveillées par l'utilisateur.
-CREATE TABLE IF NOT EXISTS radar_concurrents (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    entreprise_nom TEXT NOT NULL,            -- nom_canonique de resultats_soumissionnaires
-    cree_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, entreprise_nom),
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
--- Suivi de dossier (préparation de soumission) + pièces à cocher.
-CREATE TABLE IF NOT EXISTS dossiers (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    avis_id TEXT NOT NULL,
-    statut TEXT NOT NULL DEFAULT 'a_etudier', -- a_etudier | en_preparation | depose | gagne | perdu
-    cree_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    maj_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, avis_id),
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS dossier_pieces (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    dossier_id INTEGER NOT NULL,
-    libelle TEXT NOT NULL,
-    coche INTEGER NOT NULL DEFAULT 0,
-    ordre INTEGER NOT NULL DEFAULT 0,
-    FOREIGN KEY(dossier_id) REFERENCES dossiers(id) ON DELETE CASCADE
-);
-
--- Abonnements d'alertes (secteur/type/région) + canal d'envoi.
-CREATE TABLE IF NOT EXISTS alertes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,                         -- NULL = alerte publique (sans compte)
-    secteur TEXT,
-    type_marche TEXT,
-    region TEXT,
-    canal TEXT NOT NULL DEFAULT 'email',     -- email | whatsapp
-    cible TEXT,                              -- email ou numéro
-    actif INTEGER NOT NULL DEFAULT 1,
-    cree_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_suivis_user ON suivis(user_id);
-CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, lu);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_notif_unique ON notifications(user_id, type, resultat_id);
--- Groupements : entreprises ouvertes à répondre en groupement (matching partenaires).
-CREATE TABLE IF NOT EXISTS groupement_profils (
-    user_id INTEGER PRIMARY KEY,
-    secteurs TEXT,                           -- JSON
-    agrements TEXT,
-    contact TEXT,                            -- email / téléphone affiché aux partenaires
-    message TEXT,                            -- présentation courte
-    actif INTEGER NOT NULL DEFAULT 1,
-    cree_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
--- Coffre documentaire : documents de l'entreprise (stockés sur disque).
-CREATE TABLE IF NOT EXISTS coffre_documents (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    nom TEXT NOT NULL,
-    type TEXT,
-    taille INTEGER,
-    chemin TEXT NOT NULL,
-    cree_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_radar_user ON radar_concurrents(user_id);
-CREATE INDEX IF NOT EXISTS idx_dossiers_user ON dossiers(user_id);
-CREATE INDEX IF NOT EXISTS idx_dossier_pieces ON dossier_pieces(dossier_id);
-CREATE INDEX IF NOT EXISTS idx_alertes_user ON alertes(user_id);
-CREATE INDEX IF NOT EXISTS idx_coffre_user ON coffre_documents(user_id);
-"""
-
-
-def init_saas_schema(conn: sqlite3.Connection | None = None) -> None:
-    """Crée les tables SaaS si absentes (idempotent)."""
+    if not _USE_PG:
+        return
+    if os.getenv("VEILLEBF_INIT_SCHEMA") != "1":
+        return
+    sql_path = Path(__file__).resolve().parent / "schema_postgres.sql"
+    if not sql_path.exists():
+        return
     own = conn is None
     if own:
         conn = get_db()
     try:
-        conn.executescript(SAAS_SCHEMA_SQL)
+        conn.executescript(sql_path.read_text(encoding="utf-8"))
         conn.commit()
     finally:
         if own:

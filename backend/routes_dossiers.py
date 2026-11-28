@@ -100,10 +100,10 @@ def create_dossier(body: DossierIn, user: dict = Depends(require_user)):
         if existing:
             return {"ok": True, "id": existing, "deja": True}
         cur = conn.execute(
-            "INSERT INTO dossiers (user_id, avis_id, statut) VALUES (?, ?, 'a_etudier')",
+            "INSERT INTO dossiers (user_id, avis_id, statut) VALUES (?, ?, 'a_etudier') RETURNING id",
             (user["id"], body.avis_id),
         )
-        did = cur.lastrowid
+        did = cur.fetchone()[0]
         for i, lib in enumerate(PIECES_DEFAUT):
             conn.execute(
                 "INSERT INTO dossier_pieces (dossier_id, libelle, ordre) VALUES (?, ?, ?)",
@@ -153,11 +153,12 @@ def add_piece(avis_id: str, body: PieceIn, user: dict = Depends(require_user)):
             raise HTTPException(status_code=404, detail="Dossier introuvable.")
         n = conn.execute("SELECT COALESCE(MAX(ordre),-1)+1 AS o FROM dossier_pieces WHERE dossier_id = ?", (did,)).fetchone()["o"]
         cur = conn.execute(
-            "INSERT INTO dossier_pieces (dossier_id, libelle, ordre) VALUES (?, ?, ?)",
+            "INSERT INTO dossier_pieces (dossier_id, libelle, ordre) VALUES (?, ?, ?) RETURNING id",
             (did, body.libelle.strip(), n),
         )
+        new_id = cur.fetchone()[0]
         conn.commit()
-        return {"ok": True, "id": cur.lastrowid}
+        return {"ok": True, "id": new_id}
     finally:
         conn.close()
 
@@ -258,10 +259,20 @@ def dossier_pdf(avis_id: str, user: dict = Depends(require_user)):
 # Agenda .ics des dates limites (marchés suivis + dossiers)
 # --------------------------------------------------------------------------- #
 def _ics_date(date_limite: str) -> Optional[str]:
-    try:
-        return datetime.strptime(date_limite.strip()[:10], "%d/%m/%Y").strftime("%Y%m%d")
-    except Exception:
+    if not date_limite:
         return None
+    try:
+        import re
+        s = date_limite.strip()
+        m = re.search(r'(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})', s)
+        if m:
+            return f"{int(m.group(3)):04d}{int(m.group(2)):02d}{int(m.group(1)):02d}"
+        m_iso = re.search(r'(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})', s)
+        if m_iso:
+            return f"{int(m_iso.group(1)):04d}{int(m_iso.group(2)):02d}{int(m_iso.group(3)):02d}"
+    except Exception:
+        pass
+    return None
 
 
 @router.get("/agenda.ics")

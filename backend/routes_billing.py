@@ -23,7 +23,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 
-from backend.config import PAYMENT_PROVIDER
+from backend.config import PAYMENT_PROVIDER, LEEKPAY_PUBLIC_KEY
 from backend.db import get_db
 from backend.deps import require_feature, require_user
 from backend.payments import get_provider
@@ -33,7 +33,7 @@ from backend.security import generate_api_key
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 
 VALID_CYCLES = ("mensuel", "annuel")
-VALID_OPERATEURS = ("orange", "moov", "carte")
+VALID_OPERATEURS = ("orange", "moov", "wave", "carte")
 
 
 class SubscribeIn(BaseModel):
@@ -46,6 +46,10 @@ class SubscribeIn(BaseModel):
 class ConfirmIn(BaseModel):
     reference: str
     succes: bool = True   # sandbox : simuler succès ou échec
+
+
+class VerifyIn(BaseModel):
+    reference: str
 
 
 class ApiKeyIn(BaseModel):
@@ -70,13 +74,14 @@ def _activate_subscription(conn, user_id: int, plan_id: str, cycle: str) -> int:
     )
     cur = conn.execute(
         """INSERT INTO subscriptions (user_id, plan_id, statut, cycle, debut, fin)
-           VALUES (?, ?, 'active', ?, ?, ?)""",
+           VALUES (?, ?, 'active', ?, ?, ?) RETURNING id""",
         (user_id, plan_id, cycle, now.isoformat(sep=" ", timespec="seconds"),
          fin.isoformat(sep=" ", timespec="seconds")),
     )
+    sub_id = cur.fetchone()[0]
     conn.execute("UPDATE users SET plan_id=? WHERE id=?", (plan_id, user_id))
     conn.commit()
-    return cur.lastrowid
+    return sub_id
 
 
 # --------------------------------------------------------------------------- #
@@ -84,7 +89,10 @@ def _activate_subscription(conn, user_id: int, plan_id: str, cycle: str) -> int:
 # --------------------------------------------------------------------------- #
 @router.get("/plans")
 def list_plans():
-    return {"plans": public_plans(), "provider": PAYMENT_PROVIDER}
+    res = {"plans": public_plans(), "provider": PAYMENT_PROVIDER}
+    if PAYMENT_PROVIDER == "leekpay":
+        res["public_key"] = LEEKPAY_PUBLIC_KEY
+    return res
 
 
 @router.get("/status")
@@ -98,7 +106,7 @@ def status_(request: Request):
         ).fetchone()
         pays = conn.execute(
             "SELECT id, plan_id, cycle, montant_fcfa, provider, operateur, statut, "
-            "reference_interne, cree_le FROM payments WHERE user_id=? ORDER BY id DESC LIMIT 20",
+            "reference_interne, reference_externe, cree_le FROM payments WHERE user_id=? ORDER BY id DESC LIMIT 20",
             (user["id"],),
         ).fetchall()
     finally:
@@ -142,12 +150,22 @@ def subscribe(body: SubscribeIn, request: Request):
 
     provider = get_provider()
     init = provider.init_payment(
-        reference_interne=reference, montant_fcfa=montant, operateur=body.operateur,
-        telephone=body.telephone or "", description=f"Abonnement {plan_id} ({body.cycle})",
-        metadata={"user_id": user["id"], "plan_id": plan_id, "cycle": body.cycle},
+        reference_interne=reference,
+        montant_fcfa=montant,
+        operateur=body.operateur,
+        telephone=body.telephone or "",
+        description=f"Abonnement Veille BF - {PLANS.get(plan_id, {}).get('nom', plan_id)} ({body.cycle})",
+        metadata={
+            "user_id": user["id"],
+            "plan_id": plan_id,
+            "cycle": body.cycle,
+            "email": user.get("email"),
+            "nom": user.get("nom"),
+            "reference_interne": reference,
+        },
     )
     # enregistre la référence externe si fournie
-    if init.reference_externe:
+    if init.reference_externe or init.extra:
         conn = get_db()
         try:
             conn.execute(
@@ -160,6 +178,7 @@ def subscribe(body: SubscribeIn, request: Request):
 
     return {
         "reference": reference,
+        "reference_externe": init.reference_externe,
         "montant_fcfa": montant,
         "plan_id": plan_id,
         "cycle": body.cycle,
@@ -167,17 +186,67 @@ def subscribe(body: SubscribeIn, request: Request):
         "checkout_url": init.checkout_url,
         "confirm_url": init.confirm_url,
         "instructions": init.instructions,
+        "extra": init.extra,
     }
+
+
+@router.post("/verify")
+def verify_payment(body: VerifyIn, request: Request):
+    """
+    Vérifie en direct l'état d'un paiement après redirection ou callback client.
+    Interroge le provider et active l'abonnement si le paiement est confirmé.
+    """
+    user = require_user(request)
+    ref = (body.reference or "").strip()
+    if not ref:
+        raise HTTPException(status_code=400, detail="Référence requise.")
+
+    conn = get_db()
+    try:
+        pay = conn.execute(
+            "SELECT * FROM payments WHERE (reference_interne=? OR reference_externe=?) AND user_id=?",
+            (ref, ref, user["id"]),
+        ).fetchone()
+        if not pay:
+            raise HTTPException(status_code=404, detail="Paiement introuvable.")
+
+        if pay["statut"] == "paye":
+            return {"statut": "paye", "message": "Paiement déjà validé.", "plan_id": pay["plan_id"]}
+
+        provider = get_provider()
+        vr = provider.verify(
+            reference_interne=pay["reference_interne"],
+            reference_externe=pay["reference_externe"],
+        )
+
+        if vr.statut == "paye":
+            sub_id = _activate_subscription(conn, user["id"], pay["plan_id"], pay["cycle"])
+            conn.execute(
+                "UPDATE payments SET statut='paye', subscription_id=?, payload_json=?, maj_le=CURRENT_TIMESTAMP WHERE id=?",
+                (sub_id, json.dumps(vr.raw, ensure_ascii=False), pay["id"]),
+            )
+            conn.commit()
+            return {"statut": "paye", "message": "Paiement confirmé avec succès !", "plan_id": pay["plan_id"]}
+        elif vr.statut == "echec":
+            conn.execute(
+                "UPDATE payments SET statut='echec', payload_json=?, maj_le=CURRENT_TIMESTAMP WHERE id=?",
+                (json.dumps(vr.raw, ensure_ascii=False), pay["id"]),
+            )
+            conn.commit()
+            return {"statut": "echec", "message": "Le paiement a été rejeté ou a expiré."}
+        else:
+            return {"statut": "pending", "message": "Paiement en cours de traitement."}
+    finally:
+        conn.close()
 
 
 @router.post("/confirm")
 def confirm(body: ConfirmIn, request: Request):
     """
     Confirmation en mode SANDBOX uniquement : simule le résultat d'un paiement.
-    Refusé si un vrai fournisseur est actif (il utilisera /webhook).
     """
     if PAYMENT_PROVIDER not in ("sandbox",):
-        raise HTTPException(status_code=403, detail="Confirmation manuelle indisponible pour ce fournisseur.")
+        raise HTTPException(status_code=403, detail="Confirmation manuelle réservée au mode sandbox. Utilisez /verify pour LeekPay.")
     user = require_user(request)
     conn = get_db()
     try:
@@ -212,17 +281,49 @@ def confirm(body: ConfirmIn, request: Request):
 @router.post("/webhook")
 async def webhook(request: Request):
     """
-    Rappel serveur-à-serveur d'un vrai agrégateur. Inactif en sandbox/manual :
-    le provider réel implémentera parse_webhook() pour vérifier la signature,
-    retrouver le paiement par reference et activer l'abonnement.
+    Rappel serveur-à-serveur de l'agrégateur (LeekPay).
+    Vérifie la signature HMAC-SHA256 (X-LeekPay-Signature-V2) et active l'abonnement.
     """
     provider = get_provider()
     body = await request.body()
     try:
         vr = provider.parse_webhook(headers=dict(request.headers), body=body)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except NotImplementedError:
         raise HTTPException(status_code=501, detail="Webhook non supporté pour ce fournisseur.")
-    # (Branchement réel : retrouver le paiement via vr.reference_externe, activer si 'paye'.)
+
+    # Réconciliation du paiement en base de données
+    conn = get_db()
+    try:
+        data_block = vr.raw.get("data", {}) if isinstance(vr.raw, dict) else {}
+        meta = data_block.get("metadata", {}) or {}
+        ref_int = meta.get("reference_interne")
+        ref_ext = vr.reference_externe or data_block.get("checkout_id") or data_block.get("id")
+
+        pay = None
+        if ref_ext:
+            pay = conn.execute("SELECT * FROM payments WHERE reference_externe=?", (ref_ext,)).fetchone()
+        if not pay and ref_int:
+            pay = conn.execute("SELECT * FROM payments WHERE reference_interne=?", (ref_int,)).fetchone()
+
+        if pay:
+            if vr.statut == "paye" and pay["statut"] != "paye":
+                sub_id = _activate_subscription(conn, pay["user_id"], pay["plan_id"], pay["cycle"])
+                conn.execute(
+                    "UPDATE payments SET statut='paye', subscription_id=?, payload_json=?, maj_le=CURRENT_TIMESTAMP WHERE id=?",
+                    (sub_id, json.dumps(vr.raw, ensure_ascii=False), pay["id"]),
+                )
+                conn.commit()
+            elif vr.statut == "echec" and pay["statut"] != "paye":
+                conn.execute(
+                    "UPDATE payments SET statut='echec', payload_json=?, maj_le=CURRENT_TIMESTAMP WHERE id=?",
+                    (json.dumps(vr.raw, ensure_ascii=False), pay["id"]),
+                )
+                conn.commit()
+    finally:
+        conn.close()
+
     return {"recu": True, "statut": vr.statut}
 
 

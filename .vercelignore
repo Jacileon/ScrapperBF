@@ -1,0 +1,20 @@
+# Liste blanche : on n'envoie à Vercel que le serveur web.
+# (On ignore tout, puis on ré-inclut uniquement le nécessaire.)
+/*
+
+!/api
+!/backend
+!/web
+!/requirements.txt
+!/vercel.json
+
+# Dans web/, ne garder que l'app front
+/web/*
+!/web/app
+
+# Caches/artefacts même dans les dossiers gardés
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/

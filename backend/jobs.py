@@ -30,10 +30,21 @@ def _fmt(n) -> str:
 
 
 def _days_left(s: str):
-    try:
-        return (datetime.strptime(s.strip()[:10], "%d/%m/%Y").date() - datetime.now().date()).days
-    except Exception:
+    if not s:
         return None
+    try:
+        import re
+        m = re.search(r'(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})', s.strip())
+        if m:
+            d = datetime(int(m.group(3)), int(m.group(2)), int(m.group(1))).date()
+            return (d - datetime.now().date()).days
+        m_iso = re.search(r'(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})', s.strip())
+        if m_iso:
+            d = datetime(int(m_iso.group(1)), int(m_iso.group(2)), int(m_iso.group(3))).date()
+            return (d - datetime.now().date()).days
+    except Exception:
+        pass
+    return None
 
 
 def _insert(conn, user_id, type_, avis_id, key, titre, message, payload):
